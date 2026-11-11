@@ -32,6 +32,14 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
 - [x] v1.3: report order per Shan — madrsa header → **Prepared by** block
       (name — role · phone) in .rprep before title → maintenance details
 - [x] v1.3: sw mmr-v4 (vendor files in SHELL), tests 140/140, commit 4b59195
+- [x] v1.4: **Urdu PDF** — Jameel Noori Nastaleeq woff2 (`fonts/`, 5.5MB,
+      GitHub abid-mujtaba mirror → fonttools woff2) + html2canvas 1.4.1
+      vendored; `urduPdf()` = browser renders report (perfect Nastaliq) into
+      A4 page canvases → jsPDF wraps as direct .pdf; DOM pagination
+      (blocks + table row-split, A4 @96dpi 794×1123px, pdfpage divs);
+      preview/print/PDF sab `sheet ur` class = JNN font
+- [x] v1.4: sw mmr-v5 (html2canvas in SHELL; font lazy-cached by runtime
+      fetch handler), tests 145/145, commit c6ecd7f
 
 ## Decisions
 - PWA (not APK): PDF/print core feature — browser print is the proven path;
@@ -46,6 +54,6 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
   in vendor/) + Web Share summary text. Urdu-script data → print fallback
   (jsPDF core fonts lack Arabic glyphs; print HTML renders Urdu fine).
 
-NOW: DONE — v1.3 live (commit 4b59195): Save PDF file button + prepared-by
-block order (madrsa → my details → maintenance). Awaiting Shan's next round.
+NOW: DONE — v1.4 live (commit c6ecd7f): Urdu PDF with Jameel Noori
+Nastaleeq (browser-rendered raster pages). Awaiting Shan's next round.
 Backup zip v1.0: $ZYVO_SESSION_DIR/madrsa-maintenance-v1.0.zip.

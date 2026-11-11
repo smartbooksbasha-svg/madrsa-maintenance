@@ -12,10 +12,12 @@ mosque crest brand, day/night theme.
   `rowsToCSV`, `applyBackup`, `filteredEntries`, `durOf`, `go`
 - `styles.css` — design tokens + `@media print` (only `#printDoc` prints)
 - `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v4)
-- `vendor/jspdf.umd.min.js` + `vendor/jspdf.plugin.autotable.min.js` — self-hosted
-  PDF libs (jsPDF 2.5.2 / autotable 3.8.2), in sw SHELL
+- `vendor/jspdf.umd.min.js` + `vendor/jspdf.plugin.autotable.min.js` +
+  `vendor/html2canvas.min.js` (1.4.1) — self-hosted PDF libs, in sw SHELL
+- `fonts/jameel-noori-nastaleeq.woff2` (5.5MB) — Urdu report font, lazy
+  (downloaded when an Urdu report is first shown; runtime-cached by sw)
 - `manifest.webmanifest`, `icons/` (mkicon.py = pure-stdlib generator)
-- `tests/smoke.js` — jsdom smoke, run `npm test` (140 asserts, must stay green)
+- `tests/smoke.js` — jsdom smoke, run `npm test` (145 asserts, must stay green)
 
 ## Conventions
 - Form inputs have NO name attributes — read via `$('id')`, never
@@ -34,6 +36,14 @@ mosque crest brand, day/night theme.
   Prepared-by box → title/tables). Guards: `window.jspdf` missing OR any
   Urdu script in report data → `printReport()` fallback + toast (jsPDF core
   fonts can't render Arabic; 'Rs.' used, no ₹). New i18n keys added.
+- v1.4 Urdu PDF: `pdfHasUrdu()` → `urduPdf(rows)` — jsPDF can't shape
+  Arabic, so the browser renders the report into A4 page canvases
+  (html2canvas, 794×1123px `.pdfpage` divs, DOM pagination + table
+  row-split) and jsPDF wraps them as a real .pdf. Font =
+  `fonts/jameel-noori-nastaleeq.woff2` via `@font-face 'Jameel Noori
+  Nastaleeq'`, `jnnReady()` waits for `document.fonts.load` (8s cap).
+  `sheetClass(rows)` = 'sheet ur' applied to preview/printDoc/pdfR →
+  JNN everywhere. Text in Urdu PDFs is raster (not selectable).
 - All user-entered strings pass through `esc()` before innerHTML.
 - `confirm()`/`window.print()` are stubbed in tests — keep app calls guarded.
 
