@@ -40,6 +40,17 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
       preview/print/PDF sab `sheet ur` class = JNN font
 - [x] v1.4: sw mmr-v5 (html2canvas in SHELL; font lazy-cached by runtime
       fetch handler), tests 145/145, commit c6ecd7f
+- [x] v1.5: Shan feedback — **report simplified**: worker naam + total
+      time UDA diye (sirf Entry/Exit columns; 'Summary by worker' section
+      gone; meta sirf Total works; follow-up lines me worker nahi) —
+      preview + print + PDF + share sab consistent
+- [x] v1.5: Urdu alignment fix — .ur sheets me td/th/rprep **right-align**
+      (RTL flow), line-height 1.9→1.8, table font 13px ("tukda tukda" fix:
+      kam columns + right-align = Urdu text flow)
+- [x] v1.5: **madrsa photo logo fix** — addImage ab dataURL se PNG/JPEG
+      detect karta hai (PNG photo pehle silently fail hoti thi); real
+      jsPDF Node test se embed verify (noise PNG 12KB → PDF me gaya)
+- [x] v1.5: tests 147/147, sw mmr-v6, commit 9efcb55
 
 ## Decisions
 - PWA (not APK): PDF/print core feature — browser print is the proven path;
@@ -54,6 +65,6 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
   in vendor/) + Web Share summary text. Urdu-script data → print fallback
   (jsPDF core fonts lack Arabic glyphs; print HTML renders Urdu fine).
 
-NOW: DONE — v1.4 live (commit c6ecd7f): Urdu PDF with Jameel Noori
-Nastaleeq (browser-rendered raster pages). Awaiting Shan's next round.
+NOW: DONE — v1.5 live (commit 9efcb55): simplified report (entry/exit only)
++ Urdu right-align + logo PNG fix. Awaiting Shan's next round.
 Backup zip v1.0: $ZYVO_SESSION_DIR/madrsa-maintenance-v1.0.zip.
