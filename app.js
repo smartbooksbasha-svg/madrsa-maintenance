@@ -3,7 +3,7 @@
    report (print→PDF), monthly summary, backup. No dependencies. */
 'use strict';
 
-var APP_VER = 'v1.3';
+var APP_VER = 'v1.4';
 var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix', ME: 'mmr_me' };
 
 var CATS = [
@@ -199,7 +199,7 @@ var I18N_UR = {
   'Save PDF file': 'PDF فائل محفوظ کریں',
   'PDF file saved': 'PDF فائل محفوظ ہو گئی',
   'PDF engine unavailable — opening print': 'PDF انجن موجود نہیں — پرنٹ کھول رہے ہیں',
-  'Urdu text cannot go in a PDF file — use Print / Save as PDF': 'اردو متن PDF فائل میں نہیں جا سکتا — براہ کرم پرنٹ استعمال کریں',
+  'Preparing PDF with Urdu font…': 'اردو فونٹ کے ساتھ PDF بن رہی ہے…',
   'Share summary': 'خلاصہ شیئر کریں',
   'Pick a period, generate the report, then print it to PDF or share the summary with the headmaster.':
     'مدت منتخب کریں، رپورٹ بنائیں، پھر PDF پرنٹ کریں یا ہیڈ ماسٹر کو خلاصہ بھیجیں۔',
@@ -822,8 +822,9 @@ function reportRows() {
 function renderReportOutput() {
   var rows = reportRows();
   var html = reportDocHtml(rows);
+  $('repPreview').className = sheetClass(rows);
   $('repPreview').innerHTML = html;
-  $('printDoc').innerHTML = '<div class="sheet">' + html + '</div>';
+  $('printDoc').innerHTML = '<div class="' + sheetClass(rows) + '">' + html + '</div>';
   $('sheetWrap').classList.remove('hide');
   $('repActions').classList.remove('hide');
   repState.lastRows = rows;
@@ -922,7 +923,7 @@ function reportDocHtml(rows) {
 }
 function printReport() {
   var rows = repState.lastRows || reportRows();
-  $('printDoc').innerHTML = '<div class="sheet">' + reportDocHtml(rows) + '</div>';
+  $('printDoc').innerHTML = '<div class="' + sheetClass(rows) + '">' + reportDocHtml(rows) + '</div>';
   setTimeout(function () {
     try { window.print(); }
     catch (e) { toast('Print not available in this browser'); }
@@ -946,7 +947,7 @@ function buildPdf() {
   var rows = repState.lastRows || reportRows();
   if (!rows.length) { toast('No entries in this period'); return; }
   if (!window.jspdf || !window.jspdf.jsPDF) { printReport(); toast('PDF engine unavailable — opening print'); return; }
-  if (pdfHasUrdu(rows)) { printReport(); toast('Urdu text cannot go in a PDF file — use Print / Save as PDF'); return; }
+  if (pdfHasUrdu(rows)) { urduPdf(rows); return; }
   var s = settings, W = 210, M = 13, CW = W - 2 * M;
   var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   var period = repState.from === repState.to ? fmtDate(repState.from) : fmtDate(repState.from) + ' to ' + fmtDate(repState.to);
@@ -1094,6 +1095,114 @@ function buildPdf() {
   var fname = 'madrsa-report-' + (repState.from || todayISO()) + '_' + (repState.to || todayISO()) + '.pdf';
   doc.save(fname);
   toast('PDF file saved');
+}
+
+/* ---------- Urdu PDF (Jameel Noori Nastaleeq) ----------
+   jsPDF core fonts cannot shape Arabic script, so the report is rendered
+   by the browser (perfect Nastaliq) into A4 page canvases via html2canvas,
+   then wrapped into a real .pdf — same document, direct download. */
+function jnnReady() {
+  try {
+    if (!document.fonts || !document.fonts.load) return Promise.resolve();
+    return Promise.race([
+      document.fonts.load('16px "Jameel Noori Nastaleeq"', 'متن').catch(function () {}),
+      new Promise(function (res) { setTimeout(res, 8000); })
+    ]);
+  } catch (e) { return Promise.resolve(); }
+}
+function elH(el) {
+  var h = el.offsetHeight || 0;
+  try { var m = parseFloat(getComputedStyle(el).marginBottom); if (m) h += m; } catch (e) {}
+  return h;
+}
+function splitTable(tbl, availH) {
+  var headRows = [], bodyRows = [];
+  Array.prototype.forEach.call(tbl.rows, function (r) {
+    ((r.parentElement && r.parentElement.tagName) === 'THEAD' ? headRows : bodyRows).push(r);
+  });
+  var headH = headRows.reduce(function (a, r) { return a + elH(r); }, 0);
+  var chunks = [], cur = [], curH = headH;
+  bodyRows.forEach(function (r) {
+    var rh = elH(r);
+    if (curH + rh > availH && cur.length) { chunks.push(cur); cur = []; curH = headH; }
+    cur.push(r); curH += rh;
+  });
+  if (cur.length) chunks.push(cur);
+  return chunks.map(function (rs) {
+    var t = document.createElement('table');
+    if (tbl.className) t.className = tbl.className;
+    var th = document.createElement('thead');
+    headRows.forEach(function (r) { th.appendChild(r.cloneNode(true)); });
+    t.appendChild(th);
+    var tb = document.createElement('tbody');
+    rs.forEach(function (r) { tb.appendChild(r.cloneNode(true)); });
+    t.appendChild(tb);
+    return t;
+  });
+}
+function sheetClass(rows) { return pdfHasUrdu(rows) ? 'sheet ur' : 'sheet'; }
+function urduPdf(rows) {
+  if (!window.html2canvas || !window.jspdf || !window.jspdf.jsPDF) {
+    printReport(); toast('PDF engine unavailable — opening print'); return;
+  }
+  toast('Preparing PDF with Urdu font…');
+  var host = document.createElement('div');
+  host.id = 'pdfR';
+  host.className = 'ur';
+  host.innerHTML = '<div class="pdfpage"><div class="rdoc">' + reportDocHtml(rows) + '</div></div>';
+  document.body.appendChild(host);
+  var availH = 1123 - 64;
+  jnnReady().then(function () {
+    var rdoc = host.querySelector('.rdoc');
+    var blocks = Array.prototype.slice.call(rdoc.children);
+    var pages = [], cur = [], curH = 0;
+    blocks.forEach(function (b) {
+      var bh = elH(b);
+      if (bh > availH && b.tagName === 'TABLE') {
+        if (cur.length) { pages.push(cur); cur = []; curH = 0; }
+        splitTable(b, availH).forEach(function (t) { pages.push([t]); });
+        return;
+      }
+      if (curH + bh > availH && cur.length) { pages.push(cur); cur = []; curH = 0; }
+      cur.push(b); curH += bh;
+    });
+    if (cur.length) pages.push(cur);
+    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+    var chain = Promise.resolve();
+    pages.forEach(function (pgBlocks, i) {
+      chain = chain.then(function () {
+        var pg = document.createElement('div');
+        pg.className = 'pdfpage';
+        var rd = document.createElement('div');
+        rd.className = 'rdoc';
+        pg.appendChild(rd);
+        pgBlocks.forEach(function (b) { rd.appendChild(b); });
+        host.appendChild(pg);
+        return window.html2canvas(pg, { scale: 2, backgroundColor: '#ffffff', logging: false }).then(function (cv) {
+          var img = cv.toDataURL('image/png');
+          if (i > 0) doc.addPage();
+          doc.addImage(img, 'PNG', 0, 0, 210, 297);
+          host.removeChild(pg);
+        });
+      });
+    });
+    return chain.then(function () {
+      var n = doc.getNumberOfPages();
+      for (var i = 1; i <= n; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 158, 168);
+        doc.text('Generated by Madrsa Maintenance Register', 13, 291);
+        doc.text('Page ' + i + ' of ' + n, 197, 291, { align: 'right' });
+      }
+      var fname = 'madrsa-report-' + (repState.from || todayISO()) + '_' + (repState.to || todayISO()) + '.pdf';
+      doc.save(fname);
+      toast('PDF file saved');
+      host.remove();
+    });
+  }).catch(function () {
+    try { host.remove(); } catch (e) {}
+    printReport(); toast('PDF engine unavailable — opening print');
+  });
 }
 function shareReport() {
   var rows = repState.lastRows || reportRows();

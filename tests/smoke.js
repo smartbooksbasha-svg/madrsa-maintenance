@@ -86,7 +86,7 @@ function winToday() {
   ok(t.qa('#todayList .empty').length === 1, 'empty state on boot');
   ok(t.$('pgTitle').textContent === 'Today', 'page title Today');
   ok(t.qa('.navbtn').length === 5, '5 nav buttons');
-  ok(t.$('verChip').textContent.indexOf('v1.3') === 0, 'version chip');
+  ok(t.$('verChip').textContent.indexOf('v1.4') === 0, 'version chip');
   ok(t.$('eCat').options.length === CATS_LEN(), 'category select filled');
 
   /* ---------- 2. add a completed entry ---------- */
@@ -382,19 +382,32 @@ function winToday() {
   ok(atCount >= 3, 'pdf has category+worker+detail tables');
   ok(t2.$('toasts').textContent.indexOf('PDF file saved') > -1, 'pdf saved toast');
 
-  /* Urdu guard → falls back to print with toast */
+  /* Urdu → Jameel Noori Nastaleeq raster PDF path (not print fallback) */
   const printedBefore = t2.printed();
   t2.win.me.name = 'شاں';
-  t2.click(t2.$('pdfRep'));
-  await wait(400);
-  ok(t2.printed() === printedBefore + 1, 'urdu guard falls back to print');
-  ok(t2.$('toasts').textContent.indexOf('Urdu text') > -1, 'urdu guard toast shown');
-
-  /* back to English → pdf works again */
-  t2.win.me.name = 'Shan';
+  t2.click(t2.q('.chipbtn[data-preset="month"]'));
+  ok(t2.$('repPreview').className.indexOf('ur') > -1, 'preview sheet gets ur class for Urdu data');
+  let h2cCalls = 0;
+  t2.win.html2canvas = function () {
+    h2cCalls++;
+    return Promise.resolve({ width: 1588, height: 2246, toDataURL: function () { return 'data:image/png;base64,AAAA'; } });
+  };
   savedPdf = null; atCount = 0;
   t2.click(t2.$('pdfRep'));
-  ok(savedPdf && atCount >= 3, 'pdf works after guard resets');
+  await wait(300);
+  ok(savedPdf && /^madrsa-report-.+\.pdf$/.test(savedPdf), 'urdu pdf saved with filename');
+  ok(h2cCalls >= 1, 'html2canvas rendered urdu page(s)');
+  ok(t2.printed() === printedBefore, 'urdu path does not fall back to print');
+  ok(t2.$('toasts').textContent.indexOf('PDF file saved') > -1, 'urdu pdf saved toast');
+  ok(!t2.q('#pdfR'), 'pdf render host cleaned up');
+
+  /* back to English → vector pdf works again */
+  t2.win.me.name = 'Shan';
+  t2.click(t2.q('.chipbtn[data-preset="month"]'));
+  ok(t2.$('repPreview').className.indexOf('ur') === -1, 'preview sheet back to english');
+  savedPdf = null; atCount = 0;
+  t2.click(t2.$('pdfRep'));
+  ok(savedPdf && atCount >= 3, 'vector pdf works after urdu round');
 
   /* no engine → falls back to print */
   delete t2.win.jspdf;

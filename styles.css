@@ -2,6 +2,8 @@
 
 @font-face{font-family:'Sora';src:url('fonts/sora-xMQ9uFFYT72X5wkB_18qmnndmSdSnh2BAfO5mnuyOo1lfiQwV6-x.woff2') format('woff2');font-weight:100 800;font-display:swap;font-style:normal}
 @font-face{font-family:'Manrope';src:url('fonts/manrope-xn7gYHE41ni1AdIRggexSg.woff2') format('woff2');font-weight:200 800;font-display:swap;font-style:normal}
+/* Urdu (Jameel Noori Nastaleeq) — report rendering when data has Urdu script */
+@font-face{font-family:'Jameel Noori Nastaleeq';src:url('fonts/jameel-noori-nastaleeq.woff2') format('woff2');font-display:swap}
 
 :root{
   --bg:#edf2f9; --surf:#ffffff; --surf2:#f4f7fb; --ink:#17222f; --mut:#5c6d81;
@@ -318,6 +320,13 @@ html[data-theme="night"] .toast{background:#e9eef6;color:#0c1420}
 .rdoc .ttot td{background:#eef2f7;font-weight:800}
 .rdoc .rfollow{border:1.5px solid #b45309;background:#fdf7ee;padding:12px 14px;border-radius:6px;margin-top:16px}
 .rdoc .rfollow h3{margin-top:0;color:#8c4409}
+
+/* ---------- Urdu report font (Jameel Noori Nastaleeq) ---------- */
+.sheet.ur,.sheet.ur *,#pdfR.ur,#pdfR.ur *{font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:1.9}
+.sheet.ur table,#pdfR.ur table{font-size:12.6px}
+/* hidden host that renders Urdu PDF pages (A4 @96dpi = 794×1123px) */
+#pdfR{position:fixed;left:-10000px;top:0;width:794px;z-index:-1}
+#pdfR .pdfpage{width:794px;min-height:1123px;background:#fff;box-sizing:border-box;padding:30px 28px 34px;overflow:hidden}
 .rdoc .rfollow ul{margin-left:18px;font-size:12px}
 .rdoc .rsig{display:flex;justify-content:space-between;gap:40px;margin-top:46px}
 .rdoc .sig{text-align:center;font-size:12px;color:#3c4a5a;flex:1}
