@@ -25,6 +25,13 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
 - [x] v1.2: My profile (Shan) — name/phone/role/photo (`mmr_me`), feeds
       report "Prepared by", incharge synced from profile; backup/restore
       includes me; sw mmr-v3, tests 130/130, commit 0bbc32c
+- [x] v1.3: direct **Save PDF file** button (#pdfRep) — self-hosted jsPDF
+      2.5.2 + autotable 3.8.2 in vendor/, A4 layout mirrors print doc,
+      guards: no engine → print fallback, Urdu text → print fallback (core
+      PDF fonts can't render Arabic script), Rs. instead of ₹
+- [x] v1.3: report order per Shan — madrsa header → **Prepared by** block
+      (name — role · phone) in .rprep before title → maintenance details
+- [x] v1.3: sw mmr-v4 (vendor files in SHELL), tests 140/140, commit 4b59195
 
 ## Decisions
 - PWA (not APK): PDF/print core feature — browser print is the proven path;
@@ -35,9 +42,10 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
   crest = Shan's picked brand family (masjid apps). Day + night toggle.
 - Status model: no-exit = "Working (on site)", exit stamped = Completed,
   optional "Follow-up needed". Mark-exit button stamps current time.
-- Report = print-to-PDF (@media print) + Web Share summary text. No jsPDF.
-- Local-first: no Supabase needed (single-user register).
+- Report = print-to-PDF (@media print) + direct PDF file (jsPDF, self-hosted
+  in vendor/) + Web Share summary text. Urdu-script data → print fallback
+  (jsPDF core fonts lack Arabic glyphs; print HTML renders Urdu fine).
 
-NOW: DONE — v1.2 live (commit 0bbc32c): Urdu UI + auto-fix English + madrsa
-profile (photo/logo) + my profile (Prepared by). Awaiting Shan's next round.
+NOW: DONE — v1.3 live (commit 4b59195): Save PDF file button + prepared-by
+block order (madrsa → my details → maintenance). Awaiting Shan's next round.
 Backup zip v1.0: $ZYVO_SESSION_DIR/madrsa-maintenance-v1.0.zip.

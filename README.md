@@ -2,7 +2,7 @@
 
 Daily maintenance register for the madrsa — electrical, plumbing, carpentry
 and other works, with daily **entry & exit times**, auto duration, a formal
-**Headmaster Report** (print → PDF) and monthly summaries.
+**Headmaster Report** (print → PDF, direct PDF file download) and monthly summaries.
 
 Live: https://smartbooksbasha-svg.github.io/madrsa-maintenance/
 
@@ -11,9 +11,10 @@ Live: https://smartbooksbasha-svg.github.io/madrsa-maintenance/
   still on site show as "On site now".
 - **Register** — all entries with filters (dates, category, worker, status,
   search) + CSV export.
-- **Report** — pick a period (today / week / month / custom) → "Print / Save
-  as PDF" gives the headmaster-ready document; "Share summary" sends the
-  text summary via WhatsApp.
+- **Report** — pick a period (today / week / month / custom) → headmaster-ready
+  document (madrsa name → prepared-by → maintenance details): "Print / Save as
+  PDF" opens print, "Save PDF file" downloads the .pdf directly (offline),
+  "Share summary" sends the text summary via WhatsApp.
 - **Summary** — month-wise stats by category/worker + daily bar chart.
 - **Settings** — language (English / Urdu), auto-fix English toggle, madrsa
   profile (photo/logo, details), my profile (name/phone/role — goes on the

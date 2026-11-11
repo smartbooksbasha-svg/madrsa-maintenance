@@ -11,9 +11,11 @@ mosque crest brand, day/night theme.
 - `app.js` — all logic, vanilla JS, no deps. Globals exposed for tests:
   `rowsToCSV`, `applyBackup`, `filteredEntries`, `durOf`, `go`
 - `styles.css` — design tokens + `@media print` (only `#printDoc` prints)
-- `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v2)
+- `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v4)
+- `vendor/jspdf.umd.min.js` + `vendor/jspdf.plugin.autotable.min.js` — self-hosted
+  PDF libs (jsPDF 2.5.2 / autotable 3.8.2), in sw SHELL
 - `manifest.webmanifest`, `icons/` (mkicon.py = pure-stdlib generator)
-- `tests/smoke.js` — jsdom smoke, run `npm test` (117 asserts, must stay green)
+- `tests/smoke.js` — jsdom smoke, run `npm test` (140 asserts, must stay green)
 
 ## Conventions
 - Form inputs have NO name attributes — read via `$('id')`, never
@@ -28,6 +30,10 @@ mosque crest brand, day/night theme.
   toggle `#sAutoFix`. New UI strings must be added to I18N_UR too.
 - Status model: derived — no exit = "working", exit stamped = "completed",
   optional "follow". `statusOf()` is the single source.
+- v1.3 PDF: `buildPdf()` direct .pdf download (order: madrsa header →
+  Prepared-by box → title/tables). Guards: `window.jspdf` missing OR any
+  Urdu script in report data → `printReport()` fallback + toast (jsPDF core
+  fonts can't render Arabic; 'Rs.' used, no ₹). New i18n keys added.
 - All user-entered strings pass through `esc()` before innerHTML.
 - `confirm()`/`window.print()` are stubbed in tests — keep app calls guarded.
 
