@@ -3,8 +3,8 @@
    report (print→PDF), monthly summary, backup. No dependencies. */
 'use strict';
 
-var APP_VER = 'v1.0';
-var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme' };
+var APP_VER = 'v1.1';
+var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix' };
 
 var CATS = [
   { id: 'electrical', label: 'Electrical',   dot: '#d97706' },
@@ -121,6 +121,268 @@ var CREST = '<svg viewBox="0 0 64 64" aria-hidden="true">'
   + '<rect x="11.5" y="20" width="4.4" height="32" rx="1.6"/><circle cx="13.7" cy="16.8" r="2.4"/>'
   + '<rect x="48.1" y="20" width="4.4" height="32" rx="1.6"/><circle cx="50.3" cy="16.8" r="2.4"/></g>'
   + '<rect x="28" y="40" width="8" height="12" rx="4" fill="#123f8f"/></svg>';
+
+/* ---------- i18n — English default, Urdu optional ---------- */
+var LANG = 'en';
+var I18N_UR = {
+  /* nav + view heads */
+  'Today': 'آج', 'Register': 'رجسٹر', 'Report': 'رپورٹ', 'Summary': 'خلاصہ',
+  'Settings': 'ترتیبات', 'Work Register': 'ورک رجسٹر',
+  'Headmaster Report': 'ہیڈ ماسٹر رپورٹ', 'Monthly Summary': 'ماہانہ خلاصہ',
+  'Daily register': 'روزانہ رجسٹر', 'Add work entry': 'نیا کام شامل کریں',
+  'Add entry': 'انٹری شامل کریں', 'From': 'سے', 'To': 'تک', 'Category': 'قسم',
+  'Worker': 'کاریگر', 'Status': 'صورتحال', 'All': 'سب',
+  'On site now': 'ابھی موجود', 'Completed': 'مکمل', 'Follow-up': 'فالو اپ',
+  'Follow-ups': 'فالو اپس', 'Search': 'تلاش', 'Clear': 'صاف کریں',
+  'Yesterday': 'کل', 'This week': 'اس ہفتے', 'This month': 'اس ماہ',
+  'Last month': 'پچھلے ماہ', 'All time': 'تمام عرصہ', 'Custom…': 'خود منتخب…',
+  'Generate': 'بنائیں', 'Print / Save as PDF': 'پرنٹ / PDF محفوظ کریں',
+  'Share summary': 'خلاصہ شیئر کریں',
+  'Pick a period, generate the report, then print it to PDF or share the summary with the headmaster.':
+    'مدت منتخب کریں، رپورٹ بنائیں، پھر PDF پرنٹ کریں یا ہیڈ ماسٹر کو خلاصہ بھیجیں۔',
+  /* categories */
+  'Electrical': 'الیکٹریکل', 'Plumbing': 'پلمبنگ', 'Carpentry': 'بڑھئی کا کام',
+  'Painting': 'پینٹنگ', 'AC / Fan': 'اے سی / پنکھا', 'Cleaning': 'صفائی',
+  'Building': 'بلڈنگ', 'Other': 'دیگر',
+  /* today view */
+  'Work entries': 'ورک انٹریاں', 'Total time': 'کل وقت',
+  'No entries yet today': 'آج ابھی کوئی انٹری نہیں',
+  'When a worker arrives, tap “Add work entry” — the clock starts from his entry time.':
+    'جب کوئی کاریگر آئے تو “نیا کام شامل کریں” دبائیں — حساب اس کے آنے کے وقت سے شروع ہوتا ہے۔',
+  'Mark exit': 'رفتگی درج کریں', 'Edit': 'تبدیل کریں', 'Delete': 'حذف کریں',
+  'still on site': 'ابھی موجود ہے', '(overnight)': '(رات گئے)',
+  /* entry form */
+  'Date': 'تاریخ', 'Worker name': 'کاریگر کا نام', 'Phone': 'فون',
+  'Entry time': 'آمد کا وقت', 'Exit time': 'رفتگی کا وقت', 'Now': 'ابھی',
+  'Work done': 'کیا گیا کام', 'Materials used': 'استعمال شدہ سامان',
+  'Cost (₹, optional)': 'لاگت (₹، اختیاری)',
+  'Auto — by exit time': 'خودکار — رفتگی کے وقت سے',
+  'Follow-up needed': 'فالو اپ درکار ہے', 'Save entry': 'انٹری محفوظ کریں',
+  'Cancel': 'منسوک', 'Edit entry': 'انٹری تبدیل کریں',
+  'e.g. Rafiq (electrician)': 'مثلاً رفیق (الیکٹریشن)', 'optional': 'اختیاری',
+  'e.g. Changed classroom tube light': 'مثلاً کلاس روم کی ٹیوب لائٹ بدلی',
+  'e.g. 2 tube lights, 5m wire — optional': 'مثلاً 2 ٹیوب لائٹس، 5 میٹر تار — اختیاری',
+  /* register */
+  'entries': 'انٹریاں', 'total time': 'کل وقت', 'average': 'اوسط',
+  'No entries match': 'کوئی انٹری نہیں ملی',
+  'Change the filters, or add a new entry.': 'فلٹر بدلیں، یا نئی انٹری شامل کریں۔',
+  /* summary */
+  'By category': 'قسم کے مطابق', 'By worker': 'کاریگر کے مطابق',
+  'Daily works —': 'روزانہ کام —', 'No entries this month.': 'اس ماہ کوئی انٹری نہیں۔',
+  'No workers this month.': 'اس ماہ کوئی کاریگر نہیں۔',
+  /* settings */
+  'Language & English': 'زبان اور انگریزی', 'App language': 'ایپ کی زبان',
+  'Auto-fix English': 'انگریزی خودکار درست',
+  'Turns Hinglish notes into clean English when saving — “light kharab hai” becomes “Light faulty.” The printed report always stays in English.':
+    'محفوظ کرتے وقت ہنگلش نوٹ خودکار صاف انگریزی بن جاتے ہیں — “light kharab hai” بنے گا “Light faulty.” چھپی رپورٹ ہمیشہ انگریزی میں رہتی ہے۔',
+  'Madrsa details': 'مدرسہ کی تفصیلات', 'Madrsa name': 'مدرسہ کا نام',
+  'Address (optional)': 'پتہ (اختیاری)', 'Phone (optional)': 'فون (اختیاری)',
+  'Headmaster name (optional)': 'ہیڈ ماسٹر کا نام (اختیاری)',
+  'In-charge name (optional)': 'ذمہ دار کا نام (اختیاری)',
+  'Save details': 'تفصیلات محفوظ کریں', 'Workers list': 'کاریگروں کی فہرست',
+  'Name': 'نام', 'Add worker': 'کاریگر شامل کریں',
+  'These names appear as suggestions while adding entries.':
+    'یہ نام انٹری شامل کرتے وقت تجویز کے طور پر نظر آتے ہیں۔',
+  'No saved workers yet': 'ابھی کوئی کاریگر محفوظ نہیں',
+  'Data': 'ڈیٹا', 'Backup (JSON file)': 'بیک اپ (JSON فائل)',
+  'Restore from backup': 'بیک اپ بحال کریں', 'Clear all data': 'تمام ڈیٹا صاف کریں',
+  'All data stays on this device. Take a backup regularly — before clearing or changing phones.':
+    'تمام ڈیٹا اسی فون میں رہتا ہے۔ باقاعدگی سے بیک اپ لیں — صاف کرنے یا فون بدلنے سے پہلے۔',
+  'About': 'تعارف',
+  'Madrsa Maintenance Register — works offline, installs like an app. Entries are stored on this device only.':
+    'مدرسہ مینٹیننس رجسٹر — بغیر انٹرنیٹ چلتا ہے، ایپ کی طرح انسٹال ہوتا ہے۔ انٹریاں صرف اسی فون میں محفوظ ہوتی ہیں۔',
+  'Install app': 'ایپ انسٹال کریں',
+  'iPhone: open this page in Safari → Share → “Add to Home Screen”.':
+    'آئی فون: یہ صفحہ Safari میں کھولیں، پھر Share → “Add to Home Screen” دبائیں۔',
+  'Street, area': 'گلی، علاقہ', 'Contact number': 'رابطہ نمبر',
+  'Report signature line': 'رپورٹ کے دستخط کی جگہ',
+  'Who prepares the report': 'رپورٹ کون تیار کرتا ہے',
+  /* toasts */
+  'Entry saved': 'انٹری محفوظ ہو گئی', 'Entry updated': 'انٹری اپ ڈیٹ ہو گئی',
+  'Entry deleted': 'انٹری حذف ہو گئی', 'Exit time recorded': 'رفتگی کا وقت درج ہو گیا',
+  'English auto-fixed — entry saved': 'انگریزی خودکار درست ہوئی — انٹری محفوظ ہو گئی',
+  'Worker added': 'کاریگر شامل ہو گیا', 'Worker removed': 'کاریگر ہٹا دیا گیا',
+  'This worker is already in the list': 'یہ کاریگر پہلے سے فہرست میں ہے',
+  'Enter a worker name': 'کاریگر کا نام لکھیں',
+  'Details saved': 'تفصیلات محفوظ ہو گئیں',
+  'Backup file downloaded': 'بیک اپ فائل ڈاؤن لوڈ ہو گئی',
+  'Backup restored': 'بیک اپ بحال ہو گیا', 'All data cleared': 'تمام ڈیٹا صاف ہو گیا',
+  'Nothing to clear': 'صاف کرنے کو کچھ نہیں',
+  'Summary copied — paste anywhere': 'خلاصہ کاپی ہو گیا — کہیں بھی پیسٹ کریں',
+  'Pick both dates': 'دونوں تاریخوں کا انتخاب کریں',
+  '“From” date is after “To”': '“سے” کی تاریخ “تک” کے بعد ہے',
+  'Please fill date, category, worker, entry time and work':
+    'تاریخ، قسم، کاریگر، آمد کا وقت اور کام — سب پُر کریں',
+  'No entries in this period': 'اس مدت میں کوئی انٹری نہیں',
+  'Nothing to export with these filters': 'ان فلٹرز کے ساتھ کچھ برآمد نہیں',
+  'Auto-fix English is ON': 'انگریزی خودکار درست آن ہے',
+  'Auto-fix English is OFF': 'انگریزی خودکار درست آف ہے',
+  'Could not share': 'شیئر نہیں ہو سکا', 'Download failed': 'ڈاؤن لوڈ ناکام',
+  'Print not available in this browser': 'اس براؤزر میں پرنٹ دستیاب نہیں',
+  'Storage full — take a backup and clear old data': 'اسٹوریج بھر گیا — بیک اپ لیں اور پرانا ڈیٹا صاف کریں',
+  'Already installed, or use browser menu → “Install app”':
+    'پہلے سے انسٹال ہے، یا براؤزر مینو → “Install app” استعمال کریں'
+};
+var _origNode = new WeakMap();
+var _origPh = new WeakMap();
+var _tmo = null;
+
+function tStr(s) { return LANG === 'ur' && I18N_UR[s] ? I18N_UR[s] : s; }
+function inReportZone(el) {
+  /* the headmaster report document is ALWAYS English */
+  for (var p = el && el.parentElement; p; p = p.parentElement) {
+    if (p.id === 'repPreview' || p.id === 'printDoc') return true;
+  }
+  return false;
+}
+function translateTree() {
+  if (!document.body) return;
+  var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+  var nodes = [];
+  while (walker.nextNode()) {
+    var n = walker.currentNode;
+    if (!n.nodeValue || !n.nodeValue.trim()) continue;
+    var p = n.parentElement;
+    if (!p) continue;
+    var tag = p.tagName;
+    if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') continue;
+    if (inReportZone(p)) continue;
+    nodes.push(n);
+  }
+  nodes.forEach(function (n) {
+    var key = n.nodeValue.trim();
+    if (LANG === 'ur') {
+      var v = I18N_UR[key];
+      if (v) {
+        if (!_origNode.has(n)) _origNode.set(n, n.nodeValue);
+        n.nodeValue = n.nodeValue.replace(key, v);
+      }
+    } else {
+      var o = _origNode.get(n);
+      if (o != null) { n.nodeValue = o; _origNode.delete(n); }
+    }
+  });
+  qsa('[placeholder]').forEach(function (el) {
+    var ph = el.getAttribute('placeholder');
+    if (!ph) return;
+    if (LANG === 'ur') {
+      var v = I18N_UR[ph];
+      if (v) {
+        if (!_origPh.has(el)) _origPh.set(el, ph);
+        el.setAttribute('placeholder', v);
+      }
+    } else {
+      var o = _origPh.get(el);
+      if (o != null) { el.setAttribute('placeholder', o); _origPh.delete(el); }
+    }
+  });
+}
+function queueTranslate() {
+  if (_tmo) clearTimeout(_tmo);
+  _tmo = setTimeout(translateTree, 30);
+}
+function setLang(l) {
+  LANG = l === 'ur' ? 'ur' : 'en';
+  lsSet(LS.L, LANG);
+  document.documentElement.setAttribute('lang', LANG === 'ur' ? 'ur' : 'en');
+  document.documentElement.setAttribute('dir', LANG === 'ur' ? 'rtl' : 'ltr');
+  ['langSel', 'langSel2'].forEach(function (id) { if ($(id)) $(id).value = LANG; });
+  translateTree();
+}
+function initLang() {
+  var s = lsGet(LS.L, 'en');
+  if (s !== 'ur') s = 'en';
+  LANG = s;
+  document.documentElement.setAttribute('lang', s);
+  document.documentElement.setAttribute('dir', s === 'ur' ? 'rtl' : 'ltr');
+  ['langSel', 'langSel2'].forEach(function (id) { if ($(id)) $(id).value = s; });
+  if (s === 'ur') translateTree();
+}
+
+/* ---------- auto English (Hinglish → clean English, offline rules) ---------- */
+var HING = [
+  [/\bband kar diya\b/gi, 'switched off'],
+  [/\bband kiya\b/gi, 'switched off'],
+  [/\bband (?:tha|thi|hai|ha)\b/gi, 'off'],
+  [/\btheek kar diya\b/gi, 'repaired'],
+  [/\btheek kiya\b/gi, 'repaired'],
+  [/\bphoot raha\b/gi, 'leaking'],
+  [/\btoot gaya\b/gi, 'broke'],
+  [/\bkar diya\b/gi, 'done'],
+  [/\bkar liya\b/gi, 'done'],
+  [/\blaga diya\b/gi, 'installed'],
+  [/\bbadal diya\b/gi, 'replaced'],
+  [/\bbadla diya\b/gi, 'replaced'],
+  [/\bho gaya\b/gi, 'completed'],
+  [/\bcheck kiya\b/gi, 'checked'],
+  [/\bchange kiya\b/gi, 'changed'],
+  [/\bsaaf kiya\b/gi, 'cleaned'],
+  [/\bkharab\b/gi, 'faulty'],
+  [/\bkaam\b/gi, 'work'],
+  [/\bkiya\b/gi, 'done'],
+  [/\bhua\b/gi, 'done'],
+  [/\bnahi\b/gi, 'not'],
+  [/\bnahin\b/gi, 'not'],
+  [/\bchalu\b/gi, 'running'],
+  [/\bsaaf\b/gi, 'clean'],
+  [/\btoota\b/gi, 'broken'],
+  [/\bphoota\b/gi, 'leaking'],
+  [/\bphoot\b/gi, 'leak'],
+  [/\bnal\b/gi, 'tap'],
+  [/\bpankha\b/gi, 'fan'],
+  [/\bbijli\b/gi, 'electricity'],
+  [/\bbadla\b/gi, 'replaced'],
+  [/\bnayi\b/gi, 'new'],
+  [/\bnaya\b/gi, 'new'],
+  [/\bpurani\b/gi, 'old'],
+  [/\bpurana\b/gi, 'old'],
+  [/\bkamra\b/gi, 'room'],
+  [/\bkamre\b/gi, 'rooms'],
+  [/\bpaani\b/gi, 'water'],
+  [/\bpani\b/gi, 'water'],
+  [/\bmistri\b/gi, 'mason'],
+  [/\bmistry\b/gi, 'mason'],
+  [/\btanki\b/gi, 'tank'],
+  [/\bchhat\b/gi, 'roof'],
+  [/\bdeewar\b/gi, 'wall'],
+  [/\bdiwar\b/gi, 'wall'],
+  [/\bdarwaza\b/gi, 'door'],
+  [/\bkhidki\b/gi, 'window'],
+  [/\blagaya\b/gi, 'installed'],
+  [/\btheek\b/gi, 'fixed'],
+  [/\bjama\b/gi, 'fixed'],
+  [/\bhataya\b/gi, 'removed'],
+  [/\b(?:ka|ki|ke|kar|hai|ha|tha|thi|raha|rahi)\b/gi, ' ']
+];
+function autoEnglish(s) {
+  if (!s) return s;
+  s = String(s);
+  if (/[\u0600-\u06FF]/.test(s)) return s; /* typed Urdu — never touch */
+  HING.forEach(function (r) { s = s.replace(r[0], r[1]); });
+  s = s.replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/([,.;:!?])(?=[A-Za-z0-9])/g, '$1 ')
+    .trim();
+  s = s.replace(/\bi\b/g, 'I');
+  if (s) {
+    s = s.charAt(0).toUpperCase() + s.slice(1);
+    if (!/[.!?)\]"]$/.test(s)) s += '.';
+  }
+  return s;
+}
+function titleCase(s) {
+  if (!s) return s;
+  s = String(s).trim();
+  if (/[\u0600-\u06FF]/.test(s)) return s;
+  return s.replace(/\S+/g, function (w) {
+    /* capitalize the first letter, even behind a bracket — "(electrician)" → "(Electrician)" */
+    return w.replace(/^([(\[{“"'-]*)([a-z])/, function (all, pre, ch) { return pre + ch.toUpperCase(); });
+  });
+}
+function autoFixOn() {
+  var v = lsGet(LS.F, 1);
+  return v !== 0 && v !== '0' && v !== false;
+}
 
 /* ---------- state ---------- */
 var entries = [];
@@ -375,6 +637,12 @@ function saveEntry(ev) {
     toast('Please fill date, category, worker, entry time and work');
     return;
   }
+  var fixedEn = false;
+  if (autoFixOn()) {
+    var w2 = autoEnglish(data.work), m2 = autoEnglish(data.materials), nw = titleCase(data.worker);
+    fixedEn = w2 !== data.work || m2 !== data.materials || nw !== data.worker;
+    data.work = w2; data.materials = m2; data.worker = nw;
+  }
   if (editingId) {
     var i = entries.findIndex(function (x) { return x.id === editingId; });
     if (i > -1) {
@@ -383,7 +651,7 @@ function saveEntry(ev) {
     toast('Entry updated');
   } else {
     entries.push(Object.assign({ id: uid(), createdAt: Date.now() }, data));
-    toast('Entry saved');
+    toast(fixedEn ? 'English auto-fixed — entry saved' : 'Entry saved');
   }
   saveEntries(entries);
   closeModal();
@@ -397,7 +665,7 @@ function markExit(id) {
   e.updatedAt = Date.now();
   saveEntries(entries);
   var d = durOf(e);
-  toast('Exit ' + e.out + ' recorded — ' + fmtDur(d ? d.min : null));
+  toast(tStr('Exit time recorded') + ' — ' + fmtDur(d ? d.min : null));
   refreshView();
 }
 function deleteEntry(id) {
@@ -767,7 +1035,7 @@ function applyBackup(obj) {
   workers = (obj.workers || []).slice();
   if (obj.settings) settings = Object.assign({}, DEF_SET, obj.settings);
   saveEntries(entries); saveWorkers(workers); saveSettings(settings);
-  toast('Backup restored — ' + nE + ' entries');
+  toast(tStr('Backup restored') + ' — ' + nE + ' entries');
   fillWorkerFilter();
   refreshView();
   if (view === 'settings') renderSettings();
@@ -803,6 +1071,17 @@ function bind() {
   $('burger').addEventListener('click', openDrawer);
   $('scrim').addEventListener('click', closeDrawer);
   $('themeBtn').addEventListener('click', toggleTheme);
+
+  /* language + auto-fix English */
+  ['langSel', 'langSel2'].forEach(function (id) {
+    var s = $(id);
+    if (s) s.addEventListener('change', function () { setLang(this.value); });
+  });
+  var af = $('sAutoFix');
+  if (af) af.addEventListener('change', function () {
+    lsSet(LS.F, this.checked ? 1 : 0);
+    toast(this.checked ? 'Auto-fix English is ON' : 'Auto-fix English is OFF');
+  });
 
   $('addTodayBtn').addEventListener('click', function () { openModal(null); });
   $('addRegBtn').addEventListener('click', function () { openModal(null); });
@@ -944,11 +1223,17 @@ function init() {
   workers = loadWorkers();
   settings = loadSettings();
   initTheme();
+  initLang();
   $('verChip').textContent = APP_VER + ' · offline';
   $('sumMonth').value = todayISO().slice(0, 7);
   fillCatSelect();
   fillWorkerDatalist();
   bind();
+  var afc = $('sAutoFix');
+  if (afc) afc.checked = autoFixOn();
+  if (window.MutationObserver) {
+    new MutationObserver(queueTranslate).observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
   go('today');
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

@@ -71,7 +71,7 @@ html[data-theme="night"] .navbtn.active{color:var(--acc)}
   backdrop-filter:blur(10px);position:relative;z-index:30;
 }
 .top h1{font-size:17px;letter-spacing:-.01em}
-.top-actions{margin-left:auto;display:flex;gap:6px}
+.top-actions{margin-inline-start:auto;display:flex;gap:6px}
 .burger{display:none}
 
 .iconbtn{
@@ -91,7 +91,7 @@ html[data-theme="night"] .ic-sun{display:none}
 
 .viewhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
 .viewhead h2{font-size:20px;letter-spacing:-.015em}
-.headbtns{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.headbtns{margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap}
 .lead{color:var(--mut);margin:-6px 0 16px;max-width:640px}
 
 /* ---------- buttons ---------- */
@@ -116,7 +116,7 @@ button svg{width:18px;height:18px}
 .datehead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .datehead h2{font-size:22px;letter-spacing:-.015em}
 .ovl{font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin-bottom:2px}
-.datehead .primarybtn{margin-left:auto}
+.datehead .primarybtn{margin-inline-start:auto}
 
 .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
 .chip{
@@ -287,7 +287,7 @@ html[data-theme="night"] .nowbtn{color:var(--acc)}
 @media(prefers-reduced-motion:reduce){.mcard,.mscrim{animation:none}}
 .mhead{display:flex;align-items:center;gap:10px;margin-bottom:18px}
 .mhead h3{font-size:18px;letter-spacing:-.01em}
-.mhead .iconbtn{margin-left:auto}
+.mhead .iconbtn{margin-inline-start:auto}
 .mfoot{display:flex;gap:10px;align-items:center;margin-top:6px}
 .mfoot .spacer{flex:1}
 
@@ -356,7 +356,7 @@ html[data-theme="night"] .toast{background:#e9eef6;color:#0c1420}
 @media(max-width:640px){
   body{font-size:14px}
   .viewhead h2{font-size:18px}
-  .datehead .primarybtn{margin-left:0;width:100%}
+  .datehead .primarybtn{margin-inline-start:0;width:100%}
   form .frow{grid-template-columns:1fr}
   .filters label{flex:1 1 44%}
   .filters .grow{flex-basis:100%}
@@ -378,4 +378,30 @@ html[data-theme="night"] .toast{background:#e9eef6;color:#0c1420}
 /* touch devices: no hover-lift spam */
 @media(hover:none){
   .primarybtn:hover,.ghostbtn:hover,.dangerbtn:hover,.ecard:hover,.iconbtn:hover,.sbtn:hover{transform:none}
+}
+
+/* ---------- language selector + auto-fix toggle ---------- */
+.langsel{
+  min-height:42px;border-radius:11px;border:1px solid var(--line);background:var(--surf);
+  color:var(--ink);padding:6px 10px;font-weight:700;font-family:var(--f-head);font-size:13px;
+  cursor:pointer;transition:border-color .18s;
+}
+.langsel:hover{border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}
+.top-actions .langsel{min-height:42px}
+.checkrow{flex-direction:row;align-items:center;gap:10px;font-size:13px;font-weight:600;
+  text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer;margin-bottom:10px}
+.checkrow input{width:18px;height:18px;accent-color:var(--acc);cursor:pointer;flex:none}
+
+/* ---------- RTL (Urdu) — the report document always stays LTR English ---------- */
+html[dir="rtl"] .navbtn.active::before{left:auto;right:-14px;border-radius:4px 0 0 4px}
+html[dir="rtl"] .tbl th,html[dir="rtl"] .tbl td{text-align:right}
+html[dir="rtl"] .langsel{direction:ltr}
+html[dir="rtl"] input[type="time"],html[dir="rtl"] input[type="date"],
+html[dir="rtl"] input[type="month"],html[dir="rtl"] input[type="tel"],
+html[dir="rtl"] input[type="number"],html[dir="rtl"] input[type="search"]{direction:ltr;text-align:left}
+.sheet{direction:ltr}
+.bars,.bars-axis{direction:ltr}
+@media(max-width:980px){
+  html[dir="rtl"] .side{transform:translateX(103%)}
+  html[dir="rtl"] .side.open{transform:none}
 }

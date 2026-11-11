@@ -36,6 +36,8 @@ async function boot(pre) {
       if (st.workers) w.localStorage.setItem('mmr_workers', JSON.stringify(st.workers));
       if (st.settings) w.localStorage.setItem('mmr_settings', JSON.stringify(st.settings));
       if (st.theme) w.localStorage.setItem('mmr_theme', JSON.stringify(st.theme));
+      if (st.lang) w.localStorage.setItem('mmr_lang', JSON.stringify(st.lang));
+      if (st.autofix !== undefined) w.localStorage.setItem('mmr_autofix', JSON.stringify(st.autofix));
     }
   });
   await wait(350);
@@ -84,7 +86,7 @@ function winToday() {
   ok(t.qa('#todayList .empty').length === 1, 'empty state on boot');
   ok(t.$('pgTitle').textContent === 'Today', 'page title Today');
   ok(t.qa('.navbtn').length === 5, '5 nav buttons');
-  ok(t.$('verChip').textContent.indexOf('v1.0') === 0, 'version chip');
+  ok(t.$('verChip').textContent.indexOf('v1.1') === 0, 'version chip');
   ok(t.$('eCat').options.length === CATS_LEN(), 'category select filled');
 
   /* ---------- 2. add a completed entry ---------- */
@@ -256,6 +258,65 @@ function winToday() {
   ok(t2.$('todayList').textContent.indexOf('3h 30m') > -1, 'reloaded duration 3h 30m');
   ok(t2.doc.documentElement.getAttribute('data-theme') === 'night', 'night theme restored');
   ok(t2.$('todayChips').textContent.indexOf('3h 30m') > -1, 'reloaded chip total');
+
+  /* ---------- 16. v1.1: auto-fix English ---------- */
+  ok(t2.win.autoEnglish('light kharab hai') === 'Light faulty.', 'autoEnglish: light kharab hai');
+  ok(t2.win.autoEnglish('nal ka paani phoot raha tha') === 'Tap water leaking.', 'autoEnglish: nal ka paani phoot raha tha');
+  ok(t2.win.autoEnglish('kaam ho gaya') === 'Work completed.', 'autoEnglish: kaam ho gaya');
+  ok(t2.win.autoEnglish('نل خراب ہے') === 'نل خراب ہے', 'autoEnglish: Urdu script untouched');
+  ok(t2.win.titleCase('rafiq (electrician)') === 'Rafiq (Electrician)', 'titleCase: rafiq (electrician)');
+  ok(t2.win.autoFixOn() === true, 'auto-fix defaults ON');
+  ok(t2.$('sAutoFix').checked === true, 'checkbox reflects default ON');
+
+  addEntry(t2, { worker: 'rafiq (electrician)', work: 'light kharab hai', materials: '1 naya pankha', out: '12:00' });
+  const fx = t2.ls('mmr_entries').find(x => x.worker === 'Rafiq (Electrician)');
+  ok(!!fx, 'worker name title-cased on save');
+  ok(fx && fx.work === 'Light faulty.', 'hinglish work auto-fixed on save');
+  ok(fx && fx.materials === '1 new fan.', 'hinglish materials auto-fixed on save');
+  ok(t2.$('toasts').textContent.indexOf('English auto-fixed') > -1, 'auto-fix toast shown');
+
+  /* toggle OFF → raw text saved */
+  t2.$('sAutoFix').checked = false;
+  t2.$('sAutoFix').dispatchEvent(new t2.win.Event('change', { bubbles: true }));
+  ok(t2.ls('mmr_autofix') === 0, 'auto-fix OFF persisted');
+  ok(t2.$('toasts').textContent.indexOf('OFF') > -1, 'auto-fix OFF toast');
+  addEntry(t2, { worker: 'raw man', work: 'light kharab hai', out: '11:00' });
+  const raw = t2.ls('mmr_entries').find(x => x.worker === 'raw man');
+  ok(raw && raw.work === 'light kharab hai' && raw.worker === 'raw man', 'raw text saved when OFF');
+  t2.$('sAutoFix').checked = true;
+  t2.$('sAutoFix').dispatchEvent(new t2.win.Event('change', { bubbles: true }));
+
+  /* ---------- 17. v1.1: Urdu UI, report stays English ---------- */
+  t2.$('langSel').value = 'ur';
+  t2.$('langSel').dispatchEvent(new t2.win.Event('change', { bubbles: true }));
+  ok(t2.doc.documentElement.getAttribute('dir') === 'rtl', 'ur: dir rtl');
+  ok(t2.ls('mmr_lang') === 'ur', 'ur: language persisted');
+  ok(t2.$('pgTitle').textContent === 'آج', 'ur: page title translated');
+  const navActive = t2.q('.navbtn.active span');
+  ok(navActive && navActive.textContent === 'آج', 'ur: active nav label translated');
+  ok(t2.$('todayChips').textContent.indexOf('ورک انٹریاں') > -1, 'ur: chips translated');
+  ok(t2.$('todayList').textContent.indexOf('مکمل') > -1, 'ur: card status translated');
+  const hintUr = t2.q('#v-settings .card .hint');
+  ok(hintUr && hintUr.textContent.indexOf('ہنگلش') > -1, 'ur: auto-fix hint translated');
+
+  t2.win.go('report');
+  await wait(80);
+  ok(t2.$('repPreview').textContent.indexOf('MAINTENANCE WORK REPORT') > -1, 'ur: report title stays English');
+  ok(t2.$('repPreview').textContent.indexOf('رپورٹ') === -1, 'ur: no Urdu inside report preview');
+  ok(t2.$('printDoc').textContent.indexOf('MAINTENANCE WORK REPORT') > -1, 'ur: print doc stays English');
+
+  t2.win.setLang('en');
+  ok(t2.doc.documentElement.getAttribute('dir') === 'ltr', 'en: back to ltr');
+  ok(t2.$('pgTitle').textContent === 'Headmaster Report', 'en: title restored');
+
+  /* ---------- 18. v1.1: language + auto-fix persist across reload ---------- */
+  const t3 = await boot({ entries: seed, lang: 'ur', autofix: 0 });
+  ok(t3.doc.documentElement.getAttribute('dir') === 'rtl', 'reload: ur restores rtl');
+  ok(t3.$('pgTitle').textContent === 'آج', 'reload: ur title translated');
+  ok(t3.$('langSel').value === 'ur', 'reload: topbar select synced');
+  ok(t3.$('langSel2').value === 'ur', 'reload: settings select synced');
+  ok(t3.win.autoFixOn() === false, 'reload: auto-fix OFF restored');
+  ok(t3.$('sAutoFix').checked === false, 'reload: checkbox reflects OFF');
 
   console.log('RESULT: ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);
