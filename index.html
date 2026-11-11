@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en" data-theme="day">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Madrsa Maintenance Register</title>
+<meta name="description" content="Daily maintenance work register for the madrsa — electrical, plumbing and other works with entry &amp; exit times and printable headmaster reports.">
+<meta property="og:title" content="Madrsa Maintenance Register">
+<meta property="og:description" content="Daily work register with entry &amp; exit times, monthly summaries and headmaster PDF reports.">
+<meta name="theme-color" content="#1e6fd9">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Maintenance">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="shell" id="shell">
+  <aside class="side" id="side">
+    <div class="brand">
+      <div class="crest">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2f86ea"/><stop offset="1" stop-color="#1b53a8"/>
+          </linearGradient></defs>
+          <rect width="64" height="64" rx="16" fill="url(#cg)"/>
+          <g fill="#ffffff">
+            <rect x="18" y="34" width="28" height="18" rx="2"/>
+            <path d="M32 15c-5.5 3.8-9.5 6.4-9.5 12.6V34h19v-6.4C41.5 21.4 37.5 18.8 32 15z"/>
+            <rect x="31" y="10.5" width="2" height="5" rx="1"/>
+            <circle cx="32" cy="8.8" r="1.8"/>
+            <rect x="11.5" y="20" width="4.4" height="32" rx="1.6"/>
+            <circle cx="13.7" cy="16.8" r="2.4"/>
+            <rect x="48.1" y="20" width="4.4" height="32" rx="1.6"/>
+            <circle cx="50.3" cy="16.8" r="2.4"/>
+          </g>
+          <rect x="28" y="40" width="8" height="12" rx="4" fill="#123f8f"/>
+        </svg>
+      </div>
+      <div class="bt"><b>Madrsa Maintenance</b><span>Work Register</span></div>
+    </div>
+
+    <nav class="nav" id="nav" aria-label="Main">
+      <button class="navbtn active" data-go="today">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+        <span>Today</span>
+      </button>
+      <button class="navbtn" data-go="register">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+        <span>Register</span>
+      </button>
+      <button class="navbtn" data-go="report">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+        <span>Report</span>
+      </button>
+      <button class="navbtn" data-go="summary">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16"/><path d="M8 16v-4M13 16V7M18 16v-8"/></svg>
+        <span>Summary</span>
+      </button>
+      <button class="navbtn" data-go="settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="15" cy="7" r="2.4"/><circle cx="8" cy="12" r="2.4"/><circle cx="17" cy="17" r="2.4"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="sfoot">
+      <button class="ghostbtn wide" id="installBtn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        <span>Install app</span>
+      </button>
+      <div class="ver" id="verChip">v1.0 · offline</div>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
+
+  <main class="main">
+    <header class="top">
+      <button class="iconbtn burger" id="burger" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <h1 id="pgTitle">Today</h1>
+      <div class="top-actions">
+        <button class="iconbtn" id="themeBtn" aria-label="Toggle day / night">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-moon"><path d="M20.5 13.5A8.5 8.5 0 1 1 10.5 3.5a7 7 0 0 0 10 10z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="views">
+
+      <!-- ============ TODAY ============ -->
+      <section class="view" id="v-today" aria-label="Today">
+        <div class="datehead">
+          <div>
+            <div class="ovl">Daily register</div>
+            <h2 id="todayLabel">—</h2>
+          </div>
+          <button class="primarybtn" id="addTodayBtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Add work entry</span>
+          </button>
+        </div>
+        <div class="chips" id="todayChips"></div>
+        <div class="cards" id="todayList"></div>
+      </section>
+
+      <!-- ============ REGISTER ============ -->
+      <section class="view hide" id="v-register" aria-label="Register">
+        <div class="viewhead">
+          <h2>Work Register</h2>
+          <div class="headbtns">
+            <button class="ghostbtn" id="csvBtn">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+              <span>CSV</span>
+            </button>
+            <button class="primarybtn" id="addRegBtn">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              <span>Add entry</span>
+            </button>
+          </div>
+        </div>
+        <div class="filters" id="regFilters">
+          <label>From <input type="date" id="fFrom"></label>
+          <label>To <input type="date" id="fTo"></label>
+          <label>Category <select id="fCat"><option value="">All</option></select></label>
+          <label>Worker <select id="fWorker"><option value="">All</option></select></label>
+          <label>Status <select id="fStatus">
+            <option value="">All</option>
+            <option value="working">On site now</option>
+            <option value="completed">Completed</option>
+            <option value="follow">Follow-up</option>
+          </select></label>
+          <label class="grow">Search <input type="search" id="fSearch" placeholder="work, worker, materials…"></label>
+          <button class="ghostbtn" id="fClear">Clear</button>
+        </div>
+        <div class="regmeta" id="regMeta"></div>
+        <div class="tablewrap">
+          <table class="tbl" id="regTable">
+            <thead><tr>
+              <th>Date</th><th>Worker</th><th>Category</th><th>In</th><th>Out</th>
+              <th>Time</th><th>Work done</th><th>Status</th><th class="thact"></th>
+            </tr></thead>
+            <tbody id="regBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ REPORT ============ -->
+      <section class="view hide" id="v-report" aria-label="Report">
+        <div class="viewhead"><h2>Headmaster Report</h2></div>
+        <p class="lead">Pick a period, generate the report, then print it to PDF or share the summary with the headmaster.</p>
+        <div class="chipsel" id="repPresets">
+          <button class="chipbtn" data-preset="today">Today</button>
+          <button class="chipbtn" data-preset="yesterday">Yesterday</button>
+          <button class="chipbtn" data-preset="week">This week</button>
+          <button class="chipbtn active" data-preset="month">This month</button>
+          <button class="chipbtn" data-preset="lastmonth">Last month</button>
+          <button class="chipbtn" data-preset="all">All time</button>
+          <button class="chipbtn" data-preset="custom">Custom…</button>
+        </div>
+        <div class="ranged hide" id="repRange">
+          <label>From <input type="date" id="rFrom"></label>
+          <label>To <input type="date" id="rTo"></label>
+          <button class="primarybtn" id="genRep">Generate</button>
+        </div>
+        <div class="repactions hide" id="repActions">
+          <button class="primarybtn" id="printRep">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5"/><path d="M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/></svg>
+            <span>Print / Save as PDF</span>
+          </button>
+          <button class="ghostbtn" id="shareRep">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
+            <span>Share summary</span>
+          </button>
+          <button class="ghostbtn" id="repCsv">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+            <span>CSV</span>
+          </button>
+        </div>
+        <div class="sheetwrap hide" id="sheetWrap">
+          <div class="sheet" id="repPreview"></div>
+        </div>
+      </section>
+
+      <!-- ============ SUMMARY ============ -->
+      <section class="view hide" id="v-summary" aria-label="Summary">
+        <div class="viewhead">
+          <h2>Monthly Summary</h2>
+          <input type="month" id="sumMonth" aria-label="Choose month">
+        </div>
+        <div class="chips" id="sumChips"></div>
+        <div class="sumgrid">
+          <div class="card"><h3>By category</h3><div class="tablewrap"><table class="tbl" id="sumCat"></table></div></div>
+          <div class="card"><h3>By worker</h3><div class="tablewrap"><table class="tbl" id="sumWorker"></table></div></div>
+        </div>
+        <div class="card">
+          <h3>Daily works — <span id="barLabel"></span></h3>
+          <div class="bars" id="sumBars"></div>
+        </div>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section class="view hide" id="v-settings" aria-label="Settings">
+        <div class="viewhead"><h2>Settings</h2></div>
+        <div class="sumgrid">
+          <div class="card">
+            <h3>Madrsa details</h3>
+            <form id="setForm">
+              <label>Madrsa name <input type="text" id="sMadrsa" placeholder="Madrsa e Mohammadi"></label>
+              <label>Address (optional) <input type="text" id="sAddress" placeholder="Street, area"></label>
+              <label>Phone (optional) <input type="tel" id="sPhone" placeholder="Contact number"></label>
+              <label>Headmaster name (optional) <input type="text" id="sHead" placeholder="Report signature line"></label>
+              <label>In-charge name (optional) <input type="text" id="sIncharge" placeholder="Who prepares the report"></label>
+              <button type="submit" class="primarybtn">Save details</button>
+            </form>
+          </div>
+          <div class="card">
+            <h3>Workers list</h3>
+            <form id="wForm">
+              <div class="frow">
+                <label class="grow">Name <input type="text" id="wName" placeholder="e.g. Rafiq (electrician)" required></label>
+                <label>Phone <input type="tel" id="wPhone" placeholder="optional"></label>
+              </div>
+              <button type="submit" class="ghostbtn">Add worker</button>
+            </form>
+            <ul class="wlist" id="wList"></ul>
+            <p class="hint">These names appear as suggestions while adding entries.</p>
+          </div>
+          <div class="card">
+            <h3>Data</h3>
+            <div class="btnstack">
+              <button class="ghostbtn" id="backupBtn">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+                <span>Backup (JSON file)</span>
+              </button>
+              <button class="ghostbtn" id="restoreBtn">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
+                <span>Restore from backup</span>
+              </button>
+              <button class="dangerbtn" id="clearBtn">Clear all data</button>
+            </div>
+            <p class="hint">All data stays on this device. Take a backup regularly — before clearing or changing phones.</p>
+          </div>
+          <div class="card">
+            <h3>About</h3>
+            <p class="hint" id="aboutTxt">Madrsa Maintenance Register — works offline, installs like an app. Entries are stored on this device only.</p>
+            <button class="ghostbtn wide" id="installBtn2">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>Install app</span>
+            </button>
+            <p class="hint" id="iosHint" style="display:none">iPhone: open this page in Safari → Share → “Add to Home Screen”.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ============ ENTRY MODAL ============ -->
+<div class="modal hide" id="entryModal" aria-hidden="true">
+  <div class="mscrim" data-close="1"></div>
+  <div class="mcard" role="dialog" aria-label="Work entry">
+    <div class="mhead">
+      <h3 id="mTitle">Add work entry</h3>
+      <button class="iconbtn" id="mClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <form id="entryForm" novalidate>
+      <div class="frow">
+        <label>Date <input type="date" id="eDate" required></label>
+        <label>Category <select id="eCat" required></select></label>
+      </div>
+      <div class="frow">
+        <label class="grow">Worker name <input type="text" id="eWorker" list="workerList" placeholder="e.g. Rafiq (electrician)" required></label>
+        <label>Phone <input type="tel" id="ePhone" placeholder="optional"></label>
+      </div>
+      <datalist id="workerList"></datalist>
+      <div class="frow">
+        <label>Entry time
+          <span class="timewrap"><input type="time" id="eIn" required><button type="button" class="nowbtn" id="inNow">Now</button></span>
+        </label>
+        <label>Exit time
+          <span class="timewrap"><input type="time" id="eOut"><button type="button" class="nowbtn" id="outNow">Now</button></span>
+        </label>
+      </div>
+      <label>Work done <input type="text" id="eWork" placeholder="e.g. Changed classroom tube light" required></label>
+      <label>Materials used <input type="text" id="eMaterials" placeholder="e.g. 2 tube lights, 5m wire — optional"></label>
+      <div class="frow">
+        <label>Cost (₹, optional) <input type="number" id="eCost" min="0" step="1" placeholder="0"></label>
+        <label>Status <select id="eStatus">
+          <option value="auto">Auto — by exit time</option>
+          <option value="completed">Completed</option>
+          <option value="follow">Follow-up needed</option>
+        </select></label>
+      </div>
+      <div class="mfoot">
+        <button type="button" class="dangerbtn hide" id="mDelete">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="ghostbtn" id="mCancel">Cancel</button>
+        <button type="submit" class="primarybtn">Save entry</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="printDoc"></div>
+<div id="toasts" aria-live="polite"></div>
+<input type="file" id="restoreFile" accept="application/json,.json" hidden>
+
+<script src="app.js" defer></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
