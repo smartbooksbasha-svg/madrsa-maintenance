@@ -86,7 +86,7 @@ function winToday() {
   ok(t.qa('#todayList .empty').length === 1, 'empty state on boot');
   ok(t.$('pgTitle').textContent === 'Today', 'page title Today');
   ok(t.qa('.navbtn').length === 5, '5 nav buttons');
-  ok(t.$('verChip').textContent.indexOf('v1.4') === 0, 'version chip');
+  ok(t.$('verChip').textContent.indexOf('v1.5') === 0, 'version chip');
   ok(t.$('eCat').options.length === CATS_LEN(), 'category select filled');
 
   /* ---------- 2. add a completed entry ---------- */
@@ -167,7 +167,9 @@ function winToday() {
   ok(rep.indexOf('MAINTENANCE WORK REPORT') > -1, 'report title');
   ok(rep.indexOf('Madrsa e Mohammadi') > -1, 'madrsa name in report');
   ok(rep.indexOf('Summary by category') > -1 && rep.indexOf('Detailed register') > -1, 'report sections');
-  ok(rep.indexOf('Sattar') > -1, 'worker in report');
+  ok(rep.indexOf('Sattar') === -1, 'worker name removed from report (per spec)');
+  ok(rep.indexOf('Total time') === -1 && rep.indexOf('Summary by worker') === -1, 'total time + worker summary removed');
+  ok(rep.indexOf('Entry') > -1 && rep.indexOf('Exit') > -1, 'entry/exit columns in report');
   ok(rep.indexOf('Headmaster') > -1, 'signature block');
   ok(t.$('printDoc').textContent.indexOf('MAINTENANCE WORK REPORT') > -1, 'print doc filled');
   t.click(t.$('printRep'));
@@ -183,7 +185,7 @@ function winToday() {
   ok(!t.$('repRange').classList.contains('hide'), 'custom range inputs appear');
   setVal(t, 'rFrom', winToday()); setVal(t, 'rTo', winToday());
   t.click(t.$('genRep'));
-  ok(t.$('repPreview').textContent.indexOf('Rafiq') > -1 || t.$('repPreview').textContent.indexOf('Sattar') > -1, 'custom range report generated');
+  ok(t.$('repPreview').textContent.indexOf('MAINTENANCE WORK REPORT') > -1, 'custom range report generated');
 
   /* ---------- 9. summary ---------- */
   t.win.go('summary');
@@ -379,7 +381,7 @@ function winToday() {
   } };
   t2.click(t2.$('pdfRep'));
   ok(savedPdf && /^madrsa-report-.+\.pdf$/.test(savedPdf), 'pdf saved with filename');
-  ok(atCount >= 3, 'pdf has category+worker+detail tables');
+  ok(atCount >= 2, 'pdf has category+detail tables');
   ok(t2.$('toasts').textContent.indexOf('PDF file saved') > -1, 'pdf saved toast');
 
   /* Urdu → Jameel Noori Nastaleeq raster PDF path (not print fallback) */
@@ -407,7 +409,7 @@ function winToday() {
   ok(t2.$('repPreview').className.indexOf('ur') === -1, 'preview sheet back to english');
   savedPdf = null; atCount = 0;
   t2.click(t2.$('pdfRep'));
-  ok(savedPdf && atCount >= 3, 'vector pdf works after urdu round');
+  ok(savedPdf && atCount >= 2, 'vector pdf works after urdu round');
 
   /* no engine → falls back to print */
   delete t2.win.jspdf;

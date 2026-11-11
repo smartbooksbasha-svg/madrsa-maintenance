@@ -3,7 +3,7 @@
    report (print→PDF), monthly summary, backup. No dependencies. */
 'use strict';
 
-var APP_VER = 'v1.4';
+var APP_VER = 'v1.5';
 var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix', ME: 'mmr_me' };
 
 var CATS = [
@@ -834,23 +834,16 @@ function reportDocHtml(rows) {
   var from = repState.from, to = repState.to;
   var same = from === to;
   var period = same ? fmtDate(from) : fmtDate(from) + ' to ' + fmtDate(to);
-  var totalMin = 0, follow = 0;
-  rows.forEach(function (e) { var d = durOf(e); if (d) totalMin += d.min; if (statusOf(e) === 'follow') follow++; });
+  var follow = 0;
+  rows.forEach(function (e) { if (statusOf(e) === 'follow') follow++; });
 
   var byCat = {};
   CATS.forEach(function (c) {
     var sub = rows.filter(function (e) { return e.cat === c.id; });
     if (!sub.length) return;
-    var mm = 0, ff = 0;
-    sub.forEach(function (e) { var d = durOf(e); if (d) mm += d.min; if (statusOf(e) === 'follow') ff++; });
-    byCat[c.id] = { n: sub.length, min: mm, follow: ff };
-  });
-  var byWorker = {};
-  rows.forEach(function (e) {
-    var k = e.worker || '—';
-    if (!byWorker[k]) byWorker[k] = { n: 0, min: 0 };
-    byWorker[k].n++;
-    var d = durOf(e); if (d) byWorker[k].min += d.min;
+    var ff = 0;
+    sub.forEach(function (e) { if (statusOf(e) === 'follow') ff++; });
+    byCat[c.id] = { n: sub.length, follow: ff };
   });
 
   var h = '<div class="rdoc">';
@@ -864,52 +857,38 @@ function reportDocHtml(rows) {
   h += '<div class="rt">MAINTENANCE WORK REPORT</div>';
   h += '<div class="rmeta"><div><b>Period:</b> ' + esc(period) + '</div>'
     + '<div><b>Generated:</b> ' + esc(fmtDate(todayISO()) + ', ' + nowHM()) + '</div>'
-    + '<div><b>Total works:</b> ' + rows.length + '</div>'
-    + '<div><b>Total time:</b> ' + fmtDur(totalMin) + '</div></div>';
+    + '<div><b>Total works:</b> ' + rows.length + '</div></div>';
 
   if (!rows.length) {
     h += '<div class="emptyrep">No maintenance entries were recorded in this period.</div>';
   } else {
     /* 1 — by category */
-    h += '<h3>1 · Summary by category</h3><table><thead><tr><th>Category</th><th>Works</th><th>Total time</th><th>Follow-ups</th></tr></thead><tbody>';
+    h += '<h3>1 · Summary by category</h3><table><thead><tr><th>Category</th><th>Works</th><th>Follow-ups</th></tr></thead><tbody>';
     Object.keys(byCat).forEach(function (k) {
       var c = catById(k), v = byCat[k];
-      h += '<tr><td><b>' + esc(c.label) + '</b></td><td>' + v.n + '</td><td>' + fmtDur(v.min) + '</td><td>' + (v.follow || '-') + '</td></tr>';
+      h += '<tr><td><b>' + esc(c.label) + '</b></td><td>' + v.n + '</td><td>' + (v.follow || '-') + '</td></tr>';
     });
-    h += '<tr class="ttot"><td>Total</td><td>' + rows.length + '</td><td>' + fmtDur(totalMin) + '</td><td>' + (follow || '-') + '</td></tr>';
+    h += '<tr class="ttot"><td>Total</td><td>' + rows.length + '</td><td>' + (follow || '-') + '</td></tr>';
     h += '</tbody></table>';
 
-    /* 2 — by worker */
-    var wk = Object.keys(byWorker).sort(function (a, b) { return byWorker[b].n - byWorker[a].n; });
-    h += '<h3>2 · Summary by worker</h3><table><thead><tr><th>Worker</th><th>Works</th><th>Total time</th><th>Phone</th></tr></thead><tbody>';
-    wk.forEach(function (k) {
-      var v = byWorker[k];
-      var ph = workerPhone(k);
-      h += '<tr><td><b>' + esc(k) + '</b></td><td>' + v.n + '</td><td>' + fmtDur(v.min) + '</td><td>' + esc(ph || '-') + '</td></tr>';
-    });
-    h += '</tbody></table>';
-
-    /* 3 — detailed register */
-    h += '<h3>3 · Detailed register</h3><table><thead><tr><th>#</th><th>Date</th><th>Worker</th><th>Category</th>'
-      + '<th>In</th><th>Out</th><th>Time</th><th>Work done</th><th>Materials</th><th>Cost</th><th>Status</th></tr></thead><tbody>';
+    /* 2 — detailed register (entry/exit times only — per madrsa's spec) */
+    h += '<h3>2 · Detailed register</h3><table><thead><tr><th>#</th><th>Date</th><th>Category</th>'
+      + '<th>Entry</th><th>Exit</th><th>Work done</th><th>Materials</th><th>Cost</th><th>Status</th></tr></thead><tbody>';
     rows.forEach(function (e, i) {
-      var c = catById(e.cat), d = durOf(e), st = statusOf(e);
-      h += '<tr><td>' + (i + 1) + '</td><td>' + esc(fmtDate(e.date)) + '</td><td><b>' + esc(e.worker) + '</b></td>'
+      var c = catById(e.cat), st = statusOf(e);
+      h += '<tr><td>' + (i + 1) + '</td><td>' + esc(fmtDate(e.date)) + '</td>'
         + '<td>' + esc(c.label) + '</td><td>' + esc(e.in) + '</td><td>' + esc(e.out || '—') + '</td>'
-        + '<td>' + (d ? fmtDur(d.min) + (d.overnight ? '*' : '') : '—') + '</td>'
         + '<td>' + esc(e.work || '') + '</td><td>' + esc(e.materials || '-') + '</td>'
         + '<td>' + (e.cost ? '₹' + e.cost : '-') + '</td><td>' + ST_LABEL[st] + '</td></tr>';
     });
-    h += '<tr class="ttot"><td colspan="6">Total</td><td>' + fmtDur(totalMin) + '</td><td colspan="4">'
-      + rows.length + ' works</td></tr></tbody></table>';
-    h += '<div style="font-size:10px;color:#8a97a6">* exit after midnight</div>';
+    h += '<tr class="ttot"><td colspan="8">Total</td><td>' + rows.length + ' works</td></tr></tbody></table>';
 
     /* follow-ups */
     var fl = rows.filter(function (e) { return statusOf(e) === 'follow'; });
     if (fl.length) {
       h += '<div class="rfollow"><h3>Follow-ups pending</h3><ul>'
         + fl.map(function (e) {
-          return '<li>' + esc(fmtDate(e.date)) + ' — <b>' + esc(e.worker) + '</b> (' + esc(catById(e.cat).label) + '): ' + esc(e.work || '') + '</li>';
+          return '<li>' + esc(fmtDate(e.date)) + ' — ' + esc(e.work || '') + ' (' + esc(catById(e.cat).label) + ')</li>';
         }).join('') + '</ul></div>';
     }
   }
@@ -951,14 +930,17 @@ function buildPdf() {
   var s = settings, W = 210, M = 13, CW = W - 2 * M;
   var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
   var period = repState.from === repState.to ? fmtDate(repState.from) : fmtDate(repState.from) + ' to ' + fmtDate(repState.to);
-  var totalMin = 0, follow = 0;
-  rows.forEach(function (e) { var d = durOf(e); if (d) totalMin += d.min; if (statusOf(e) === 'follow') follow++; });
+  var follow = 0;
+  rows.forEach(function (e) { if (statusOf(e) === 'follow') follow++; });
   var pbName = me.name || s.incharge || 'In-charge, Maintenance';
   var pbVal = pbName + (me.role ? ' — ' + me.role : '') + (me.phone ? ' · ' + me.phone : '');
 
-  /* 1 — madrsa header */
+  /* 1 — madrsa header (logo: detect PNG vs JPEG from the data URL) */
   var tx = M;
-  if (s.photo) { try { doc.addImage(s.photo, 'JPEG', M, 12, 16, 16); } catch (er) {} tx = M + 20; }
+  if (s.photo) {
+    try { doc.addImage(s.photo, /^data:image\/png/i.test(s.photo) ? 'PNG' : 'JPEG', M, 12, 16, 16); } catch (er) {}
+    tx = M + 20;
+  }
   doc.setFont('helvetica', 'bold'); doc.setFontSize(14.5); doc.setTextColor(20, 32, 46);
   doc.text(s.madrsa || 'Madrsa', tx, 18);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110, 122, 136);
@@ -980,7 +962,7 @@ function buildPdf() {
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 102, 116);
   doc.text('Period: ' + period, M, 54);
   doc.text('Generated: ' + fmtDate(todayISO()) + ', ' + nowHM(), M, 58.5);
-  doc.text('Total works: ' + rows.length + '    ·    Total time: ' + fmtDur(totalMin), M, 63);
+  doc.text('Total works: ' + rows.length, M, 63);
 
   var headS = { fillColor: [30, 111, 217], textColor: 255, fontStyle: 'bold' };
   var bodyS = { fontSize: 8.5, cellPadding: 2, textColor: [40, 52, 66] };
@@ -991,68 +973,43 @@ function buildPdf() {
   CATS.forEach(function (c) {
     var sub = rows.filter(function (e) { return e.cat === c.id; });
     if (!sub.length) return;
-    var mm = 0, ff = 0;
-    sub.forEach(function (e) { var d = durOf(e); if (d) mm += d.min; if (statusOf(e) === 'follow') ff++; });
-    byCat[c.id] = { n: sub.length, min: mm, follow: ff };
+    var ff = 0;
+    sub.forEach(function (e) { if (statusOf(e) === 'follow') ff++; });
+    byCat[c.id] = { n: sub.length, follow: ff };
   });
   var catBody = Object.keys(byCat).map(function (k) {
     var v = byCat[k];
-    return [catById(k).label, String(v.n), fmtDur(v.min), v.follow ? String(v.follow) : '-'];
+    return [catById(k).label, String(v.n), v.follow ? String(v.follow) : '-'];
   });
   var y2 = 69;
   if (catBody.length) {
     pdfSectionTitle(doc, 'Summary by category', y2);
     doc.autoTable({
-      startY: y2 + 3, head: [['Category', 'Works', 'Total time', 'Follow-ups']],
-      body: catBody, foot: [['Total', String(rows.length), fmtDur(totalMin), follow ? String(follow) : '-']],
+      startY: y2 + 3, head: [['Category', 'Works', 'Follow-ups']],
+      body: catBody, foot: [['Total', String(rows.length), follow ? String(follow) : '-']],
       theme: 'grid', styles: bodyS, headStyles: headS, footStyles: footS,
       margin: { left: M, right: M }, tableWidth: CW
     });
     y2 = doc.lastAutoTable.finalY + 8;
   }
 
-  /* by worker */
-  var byWorker = {};
-  rows.forEach(function (e) {
-    var k = e.worker || '—';
-    if (!byWorker[k]) byWorker[k] = { n: 0, min: 0 };
-    byWorker[k].n++;
-    var d = durOf(e); if (d) byWorker[k].min += d.min;
-  });
-  var wk = Object.keys(byWorker).sort(function (a, b) { return byWorker[b].n - byWorker[a].n; });
-  var wBody = wk.map(function (k) {
-    var v = byWorker[k];
-    return [k, String(v.n), fmtDur(v.min), workerPhone(k) || '-'];
-  });
-  var y3 = y2;
-  if (wBody.length) {
-    pdfSectionTitle(doc, 'Summary by worker', y2);
-    doc.autoTable({
-      startY: y2 + 3, head: [['Worker', 'Works', 'Total time', 'Phone']],
-      body: wBody, theme: 'grid', styles: bodyS, headStyles: headS,
-      margin: { left: M, right: M }, tableWidth: CW
-    });
-    y3 = doc.lastAutoTable.finalY + 8;
-  }
-
-  /* detailed register */
-  pdfSectionTitle(doc, 'Detailed register', y3);
+  /* detailed register — entry/exit times only (no worker, no duration) */
+  pdfSectionTitle(doc, 'Detailed register', y2);
   var stMap = { working: 'On site', completed: 'Completed', follow: 'Follow-up' };
   var dBody = rows.map(function (e, i) {
-    var d = durOf(e);
-    return [String(i + 1), fmtDate(e.date), e.worker || '', catById(e.cat).label, e.in,
-      e.out || '—', d ? fmtDur(d.min) : '—', e.work || '', e.materials || '',
+    return [String(i + 1), fmtDate(e.date), catById(e.cat).label, e.in,
+      e.out || '—', e.work || '', e.materials || '',
       e.cost ? 'Rs. ' + e.cost : '—', stMap[statusOf(e)] || ''];
   });
   doc.autoTable({
-    startY: y3 + 3,
-    head: [['#', 'Date', 'Worker', 'Category', 'In', 'Out', 'Time', 'Work done', 'Materials', 'Cost', 'Status']],
+    startY: y2 + 3,
+    head: [['#', 'Date', 'Category', 'Entry', 'Exit', 'Work done', 'Materials', 'Cost', 'Status']],
     body: dBody, theme: 'grid', styles: Object.assign({}, bodyS, { fontSize: 8, cellPadding: 1.8 }),
     headStyles: headS,
     columnStyles: {
-      0: { cellWidth: 7 }, 1: { cellWidth: 16 }, 2: { cellWidth: 22 }, 3: { cellWidth: 17 },
-      4: { cellWidth: 9 }, 5: { cellWidth: 9 }, 6: { cellWidth: 12 },
-      7: { cellWidth: 40 }, 8: { cellWidth: 24 }, 9: { cellWidth: 14 }, 10: { cellWidth: 14 }
+      0: { cellWidth: 7 }, 1: { cellWidth: 17 }, 2: { cellWidth: 20 },
+      3: { cellWidth: 11 }, 4: { cellWidth: 11 },
+      5: { cellWidth: 55 }, 6: { cellWidth: 29 }, 7: { cellWidth: 13 }, 8: { cellWidth: 21 }
     },
     margin: { left: M, right: M }, tableWidth: CW
   });
@@ -1209,10 +1166,9 @@ function shareReport() {
   var s = settings;
   var same = repState.from === repState.to;
   var period = same ? fmtDate(repState.from) : fmtDate(repState.from) + ' to ' + fmtDate(repState.to);
-  var totalMin = 0, follow = 0;
+  var follow = 0;
   var byCat = {};
   rows.forEach(function (e) {
-    var d = durOf(e); if (d) totalMin += d.min;
     if (statusOf(e) === 'follow') follow++;
     var c = catById(e.cat).label;
     byCat[c] = (byCat[c] || 0) + 1;
@@ -1220,7 +1176,7 @@ function shareReport() {
   var catLine = Object.keys(byCat).map(function (k) { return k + ' ' + byCat[k]; }).join(' · ');
   var text = (s.madrsa || 'Madrsa') + ' — Maintenance Report\n'
     + 'Period: ' + period + '\n'
-    + 'Works: ' + rows.length + ' · Total time: ' + fmtDur(totalMin) + '\n'
+    + 'Works: ' + rows.length + '\n'
     + (catLine ? 'Categories: ' + catLine + '\n' : '')
     + (follow ? 'Follow-ups pending: ' + follow + '\n' : '')
     + '— Madrsa Maintenance Register';

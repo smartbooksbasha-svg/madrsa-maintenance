@@ -322,8 +322,12 @@ html[data-theme="night"] .toast{background:#e9eef6;color:#0c1420}
 .rdoc .rfollow h3{margin-top:0;color:#8c4409}
 
 /* ---------- Urdu report font (Jameel Noori Nastaleeq) ---------- */
-.sheet.ur,.sheet.ur *,#pdfR.ur,#pdfR.ur *{font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:1.9}
-.sheet.ur table,#pdfR.ur table{font-size:12.6px}
+.sheet.ur,.sheet.ur *,#pdfR.ur,#pdfR.ur *{font-family:'Jameel Noori Nastaleeq','Noto Nastaliq Urdu',serif;line-height:1.8}
+.sheet.ur table,#pdfR.ur table{font-size:13px}
+/* Urdu reads right-to-left — right-align cell text so it flows, not fragments */
+.sheet.ur .rdoc td,#pdfR.ur .rdoc td{text-align:right}
+.sheet.ur .rdoc th,#pdfR.ur .rdoc th{text-align:right}
+.sheet.ur .rdoc .rprep,#pdfR.ur .rdoc .rprep{text-align:right}
 /* hidden host that renders Urdu PDF pages (A4 @96dpi = 794×1123px) */
 #pdfR{position:fixed;left:-10000px;top:0;width:794px;z-index:-1}
 #pdfR .pdfpage{width:794px;min-height:1123px;background:#fff;box-sizing:border-box;padding:30px 28px 34px;overflow:hidden}

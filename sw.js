@@ -1,5 +1,5 @@
 /* Madrsa Maintenance Register — service worker (network-first, offline fallback) */
-const CACHE = 'mmr-v5';
+const CACHE = 'mmr-v6';
 const SHELL = [
   './',
   './index.html',
