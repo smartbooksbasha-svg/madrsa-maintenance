@@ -15,6 +15,11 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
 - [x] jsdom smoke test green (tests/smoke.js, npm test — 83/83)
 - [x] Deploy: repo smartbooksbasha-svg/madrsa-maintenance, Pages on, live 200
 - [x] Memory updated (AGENTS.md, vault session note, playbook)
+- [x] v1.1: Urdu UI (I18N_UR dict + translateTree + MutationObserver, topbar
+      #langSel + Settings #langSel2, RTL layout, report zone always English)
+- [x] v1.1: auto-fix English (HING rules + autoEnglish + titleCase, save wiring,
+      Settings toggle #sAutoFix, mmr_autofix, Urdu script never touched)
+- [x] v1.1: sw cache mmr-v2, tests 117/117 green, commit 4d3a555 deployed
 
 ## Decisions
 - PWA (not APK): PDF/print core feature — browser print is the proven path;
@@ -28,5 +33,7 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
 - Report = print-to-PDF (@media print) + Web Share summary text. No jsPDF.
 - Local-first: no Supabase needed (single-user register).
 
-NOW: DONE — v1.0 live. Awaiting Shan's customization round (look/features
-feedback). Backup zip: $ZYVO_SESSION_DIR/madrsa-maintenance-v1.0.zip.
+NOW: DONE — v1.1 live (commit 4d3a555): English primary + optional Urdu UI +
+auto-fix Hinglish→English on save. Awaiting Shan's next customization round
+(possible: photos per entry, headmaster WhatsApp link, APK wrapper).
+Backup zip v1.0: $ZYVO_SESSION_DIR/madrsa-maintenance-v1.0.zip.
