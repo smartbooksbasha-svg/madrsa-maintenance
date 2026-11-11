@@ -86,7 +86,7 @@ function winToday() {
   ok(t.qa('#todayList .empty').length === 1, 'empty state on boot');
   ok(t.$('pgTitle').textContent === 'Today', 'page title Today');
   ok(t.qa('.navbtn').length === 5, '5 nav buttons');
-  ok(t.$('verChip').textContent.indexOf('v1.2') === 0, 'version chip');
+  ok(t.$('verChip').textContent.indexOf('v1.3') === 0, 'version chip');
   ok(t.$('eCat').options.length === CATS_LEN(), 'category select filled');
 
   /* ---------- 2. add a completed entry ---------- */
@@ -354,6 +354,54 @@ function winToday() {
   t2.click(t2.$('mPhotoRemove'));
   ok(t2.ls('mmr_settings').photo === '', 'photo removed persisted');
   ok(!t2.q('#brandLogo').classList.contains('has'), 'crest back after photo removed');
+
+  /* ---------- 20. v1.3: PDF file save + prepared-by block in report ---------- */
+  t2.win.go('report');
+  t2.click(t2.q('.chipbtn[data-preset="month"]'));
+  const repTxt = t2.$('repPreview').textContent;
+  ok(repTxt.indexOf('Prepared by') > -1 && repTxt.indexOf('9870011223') > -1, 'prepared-by block with phone in preview');
+  ok(repTxt.indexOf('Shan — in-charge, maintenance register') > -1, 'prepared-by name + role line');
+  ok(!!t2.$('pdfRep'), 'Save PDF file button present');
+
+  /* stub jsPDF (vendor script is not fetched in jsdom) */
+  let savedPdf = null, atCount = 0;
+  t2.win.jspdf = { jsPDF: function () {
+    return {
+      setFont: function () {}, setFontSize: function () {}, setTextColor: function () {},
+      setDrawColor: function () {}, setFillColor: function () {},
+      text: function () {}, line: function () {}, roundedRect: function () {},
+      addImage: function () {}, setPage: function () {}, addPage: function () {},
+      getNumberOfPages: function () { return 1; },
+      getTextWidth: function () { return 22; },
+      autoTable: function () { atCount++; this.lastAutoTable = { finalY: 80 }; },
+      save: function (n) { savedPdf = n; }
+    };
+  } };
+  t2.click(t2.$('pdfRep'));
+  ok(savedPdf && /^madrsa-report-.+\.pdf$/.test(savedPdf), 'pdf saved with filename');
+  ok(atCount >= 3, 'pdf has category+worker+detail tables');
+  ok(t2.$('toasts').textContent.indexOf('PDF file saved') > -1, 'pdf saved toast');
+
+  /* Urdu guard → falls back to print with toast */
+  const printedBefore = t2.printed();
+  t2.win.me.name = 'شاں';
+  t2.click(t2.$('pdfRep'));
+  await wait(400);
+  ok(t2.printed() === printedBefore + 1, 'urdu guard falls back to print');
+  ok(t2.$('toasts').textContent.indexOf('Urdu text') > -1, 'urdu guard toast shown');
+
+  /* back to English → pdf works again */
+  t2.win.me.name = 'Shan';
+  savedPdf = null; atCount = 0;
+  t2.click(t2.$('pdfRep'));
+  ok(savedPdf && atCount >= 3, 'pdf works after guard resets');
+
+  /* no engine → falls back to print */
+  delete t2.win.jspdf;
+  const printed2 = t2.printed();
+  t2.click(t2.$('pdfRep'));
+  await wait(400);
+  ok(t2.printed() === printed2 + 1, 'missing engine falls back to print');
 
   console.log('RESULT: ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);

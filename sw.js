@@ -1,10 +1,12 @@
 /* Madrsa Maintenance Register — service worker (network-first, offline fallback) */
-const CACHE = 'mmr-v3';
+const CACHE = 'mmr-v4';
 const SHELL = [
   './',
   './index.html',
   './styles.css',
   './app.js',
+  './vendor/jspdf.umd.min.js',
+  './vendor/jspdf.plugin.autotable.min.js',
   './manifest.webmanifest',
   './fonts/sora-xMQ9uFFYT72X5wkB_18qmnndmSdSnh2BAfO5mnuyOo1lfiQwV6-x.woff2',
   './fonts/manrope-xn7gYHE41ni1AdIRggexSg.woff2',

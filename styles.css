@@ -307,6 +307,8 @@ html[data-theme="night"] .toast{background:#e9eef6;color:#0c1420}
 .rdoc .rcrest svg{width:56px;height:56px}
 .rdoc .rname{font-family:var(--f-head);font-weight:800;font-size:21px;letter-spacing:-.01em;line-height:1.25}
 .rdoc .rsub{font-size:12px;color:#5b6b7d;margin-top:2px}
+.rdoc .rprep{margin:12px 0 2px;padding:8px 12px;border:1px solid #dfe6ee;border-radius:6px;background:#f6f8fb;font-size:12.5px;color:#3a4a5c}
+.rdoc .rprep b{color:#14202e;margin-right:8px}
 .rdoc .rt{font-family:var(--f-head);font-size:17px;letter-spacing:.14em;text-align:center;margin:18px 0 4px;font-weight:800}
 .rdoc .rmeta{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;font-size:12px;color:#3c4a5a;margin-bottom:20px}
 .rdoc h3{font-family:var(--f-head);font-size:12.5px;text-transform:uppercase;letter-spacing:.09em;margin:20px 0 8px;color:#14202e}

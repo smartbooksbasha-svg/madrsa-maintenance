@@ -3,7 +3,7 @@
    report (print→PDF), monthly summary, backup. No dependencies. */
 'use strict';
 
-var APP_VER = 'v1.2';
+var APP_VER = 'v1.3';
 var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix', ME: 'mmr_me' };
 
 var CATS = [
@@ -196,6 +196,10 @@ var I18N_UR = {
   'Yesterday': 'کل', 'This week': 'اس ہفتے', 'This month': 'اس ماہ',
   'Last month': 'پچھلے ماہ', 'All time': 'تمام عرصہ', 'Custom…': 'خود منتخب…',
   'Generate': 'بنائیں', 'Print / Save as PDF': 'پرنٹ / PDF محفوظ کریں',
+  'Save PDF file': 'PDF فائل محفوظ کریں',
+  'PDF file saved': 'PDF فائل محفوظ ہو گئی',
+  'PDF engine unavailable — opening print': 'PDF انجن موجود نہیں — پرنٹ کھول رہے ہیں',
+  'Urdu text cannot go in a PDF file — use Print / Save as PDF': 'اردو متن PDF فائل میں نہیں جا سکتا — براہ کرم پرنٹ استعمال کریں',
   'Share summary': 'خلاصہ شیئر کریں',
   'Pick a period, generate the report, then print it to PDF or share the summary with the headmaster.':
     'مدت منتخب کریں، رپورٹ بنائیں، پھر PDF پرنٹ کریں یا ہیڈ ماسٹر کو خلاصہ بھیجیں۔',
@@ -853,6 +857,9 @@ function reportDocHtml(rows) {
     + '<div class="rname">' + esc(s.madrsa || 'Madrsa') + '</div>'
     + '<div class="rsub">' + esc([s.address, s.phone].filter(Boolean).join(' · ') || 'Maintenance Department') + '</div>'
     + '</div></div>';
+  /* 2 — my details (prepared by) */
+  h += '<div class="rprep"><b>Prepared by</b> ' + esc(me.name || s.incharge || 'In-charge, Maintenance')
+    + (me.role ? ' — ' + esc(me.role) : '') + (me.phone ? ' · ' + esc(me.phone) : '') + '</div>';
   h += '<div class="rt">MAINTENANCE WORK REPORT</div>';
   h += '<div class="rmeta"><div><b>Period:</b> ' + esc(period) + '</div>'
     + '<div><b>Generated:</b> ' + esc(fmtDate(todayISO()) + ', ' + nowHM()) + '</div>'
@@ -920,6 +927,173 @@ function printReport() {
     try { window.print(); }
     catch (e) { toast('Print not available in this browser'); }
   }, 150);
+}
+
+/* ---------- PDF FILE (self-hosted jsPDF — direct .pdf download) ----------
+   Order: 1 madrsa header → 2 my details → 3 maintenance details. */
+function pdfHasUrdu(rows) {
+  var rx = /[\u0600-\u06FF]/;
+  var head = [settings.madrsa, settings.address, settings.phone, settings.headmaster,
+    me.name, me.role, me.phone].join(' ');
+  if (rx.test(head)) return true;
+  return rows.some(function (e) { return rx.test([e.worker, e.work, e.materials].join(' ')); });
+}
+function pdfSectionTitle(doc, title, y) {
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(20, 32, 46);
+  doc.text(title, 13, y);
+}
+function buildPdf() {
+  var rows = repState.lastRows || reportRows();
+  if (!rows.length) { toast('No entries in this period'); return; }
+  if (!window.jspdf || !window.jspdf.jsPDF) { printReport(); toast('PDF engine unavailable — opening print'); return; }
+  if (pdfHasUrdu(rows)) { printReport(); toast('Urdu text cannot go in a PDF file — use Print / Save as PDF'); return; }
+  var s = settings, W = 210, M = 13, CW = W - 2 * M;
+  var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  var period = repState.from === repState.to ? fmtDate(repState.from) : fmtDate(repState.from) + ' to ' + fmtDate(repState.to);
+  var totalMin = 0, follow = 0;
+  rows.forEach(function (e) { var d = durOf(e); if (d) totalMin += d.min; if (statusOf(e) === 'follow') follow++; });
+  var pbName = me.name || s.incharge || 'In-charge, Maintenance';
+  var pbVal = pbName + (me.role ? ' — ' + me.role : '') + (me.phone ? ' · ' + me.phone : '');
+
+  /* 1 — madrsa header */
+  var tx = M;
+  if (s.photo) { try { doc.addImage(s.photo, 'JPEG', M, 12, 16, 16); } catch (er) {} tx = M + 20; }
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(14.5); doc.setTextColor(20, 32, 46);
+  doc.text(s.madrsa || 'Madrsa', tx, 18);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110, 122, 136);
+  doc.text([s.address, s.phone].filter(Boolean).join(' · ') || 'Maintenance Department', tx, 23.5);
+
+  /* 2 — my details */
+  doc.setFillColor(240, 244, 248); doc.setDrawColor(214, 222, 232);
+  doc.roundedRect(M, 28, CW, 10, 1.5, 1.5, 'FD');
+  doc.setFontSize(9.5); doc.setTextColor(20, 32, 46);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Prepared by', M + 4, 33.5);
+  var lw = doc.getTextWidth('Prepared by');
+  doc.setFont('helvetica', 'normal');
+  doc.text(pbVal, M + 4 + lw + 2.5, 33.5);
+
+  /* 3 — maintenance details */
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(20, 32, 46);
+  doc.text('MAINTENANCE WORK REPORT', W / 2, 48, { align: 'center' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 102, 116);
+  doc.text('Period: ' + period, M, 54);
+  doc.text('Generated: ' + fmtDate(todayISO()) + ', ' + nowHM(), M, 58.5);
+  doc.text('Total works: ' + rows.length + '    ·    Total time: ' + fmtDur(totalMin), M, 63);
+
+  var headS = { fillColor: [30, 111, 217], textColor: 255, fontStyle: 'bold' };
+  var bodyS = { fontSize: 8.5, cellPadding: 2, textColor: [40, 52, 66] };
+  var footS = { fillColor: [240, 244, 248], textColor: [20, 32, 46], fontStyle: 'bold' };
+
+  /* by category */
+  var byCat = {};
+  CATS.forEach(function (c) {
+    var sub = rows.filter(function (e) { return e.cat === c.id; });
+    if (!sub.length) return;
+    var mm = 0, ff = 0;
+    sub.forEach(function (e) { var d = durOf(e); if (d) mm += d.min; if (statusOf(e) === 'follow') ff++; });
+    byCat[c.id] = { n: sub.length, min: mm, follow: ff };
+  });
+  var catBody = Object.keys(byCat).map(function (k) {
+    var v = byCat[k];
+    return [catById(k).label, String(v.n), fmtDur(v.min), v.follow ? String(v.follow) : '-'];
+  });
+  var y2 = 69;
+  if (catBody.length) {
+    pdfSectionTitle(doc, 'Summary by category', y2);
+    doc.autoTable({
+      startY: y2 + 3, head: [['Category', 'Works', 'Total time', 'Follow-ups']],
+      body: catBody, foot: [['Total', String(rows.length), fmtDur(totalMin), follow ? String(follow) : '-']],
+      theme: 'grid', styles: bodyS, headStyles: headS, footStyles: footS,
+      margin: { left: M, right: M }, tableWidth: CW
+    });
+    y2 = doc.lastAutoTable.finalY + 8;
+  }
+
+  /* by worker */
+  var byWorker = {};
+  rows.forEach(function (e) {
+    var k = e.worker || '—';
+    if (!byWorker[k]) byWorker[k] = { n: 0, min: 0 };
+    byWorker[k].n++;
+    var d = durOf(e); if (d) byWorker[k].min += d.min;
+  });
+  var wk = Object.keys(byWorker).sort(function (a, b) { return byWorker[b].n - byWorker[a].n; });
+  var wBody = wk.map(function (k) {
+    var v = byWorker[k];
+    return [k, String(v.n), fmtDur(v.min), workerPhone(k) || '-'];
+  });
+  var y3 = y2;
+  if (wBody.length) {
+    pdfSectionTitle(doc, 'Summary by worker', y2);
+    doc.autoTable({
+      startY: y2 + 3, head: [['Worker', 'Works', 'Total time', 'Phone']],
+      body: wBody, theme: 'grid', styles: bodyS, headStyles: headS,
+      margin: { left: M, right: M }, tableWidth: CW
+    });
+    y3 = doc.lastAutoTable.finalY + 8;
+  }
+
+  /* detailed register */
+  pdfSectionTitle(doc, 'Detailed register', y3);
+  var stMap = { working: 'On site', completed: 'Completed', follow: 'Follow-up' };
+  var dBody = rows.map(function (e, i) {
+    var d = durOf(e);
+    return [String(i + 1), fmtDate(e.date), e.worker || '', catById(e.cat).label, e.in,
+      e.out || '—', d ? fmtDur(d.min) : '—', e.work || '', e.materials || '',
+      e.cost ? 'Rs. ' + e.cost : '—', stMap[statusOf(e)] || ''];
+  });
+  doc.autoTable({
+    startY: y3 + 3,
+    head: [['#', 'Date', 'Worker', 'Category', 'In', 'Out', 'Time', 'Work done', 'Materials', 'Cost', 'Status']],
+    body: dBody, theme: 'grid', styles: Object.assign({}, bodyS, { fontSize: 8, cellPadding: 1.8 }),
+    headStyles: headS,
+    columnStyles: {
+      0: { cellWidth: 7 }, 1: { cellWidth: 16 }, 2: { cellWidth: 22 }, 3: { cellWidth: 17 },
+      4: { cellWidth: 9 }, 5: { cellWidth: 9 }, 6: { cellWidth: 12 },
+      7: { cellWidth: 40 }, 8: { cellWidth: 24 }, 9: { cellWidth: 14 }, 10: { cellWidth: 14 }
+    },
+    margin: { left: M, right: M }, tableWidth: CW
+  });
+  var y4 = doc.lastAutoTable.finalY + 8;
+
+  /* follow-ups */
+  var fl = rows.filter(function (e) { return statusOf(e) === 'follow'; });
+  if (fl.length) {
+    if (y4 > 235) { doc.addPage(); y4 = 24; }
+    pdfSectionTitle(doc, 'Follow-ups pending', y4);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(40, 52, 66);
+    fl.forEach(function (e, i) {
+      doc.text(fmtDate(e.date) + ' — ' + (e.worker || '') + ' (' + catById(e.cat).label + '): ' + (e.work || ''), M, y4 + 6 + i * 5, { maxWidth: CW });
+    });
+    y4 = y4 + 6 + fl.length * 5;
+  }
+
+  /* signatures */
+  var py = y4 + 16;
+  if (py + 20 > 280) { doc.addPage(); py = 40; }
+  doc.setDrawColor(110, 122, 136);
+  doc.line(M, py, M + 80, py);
+  doc.line(W - M - 80, py, W - M, py);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(20, 32, 46);
+  doc.text('Prepared by', M, py + 5);
+  doc.text('Headmaster', W - M - 80, py + 5);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110, 122, 136);
+  doc.text(pbName + (me.role ? ' — ' + me.role : ''), M, py + 9.5);
+  doc.text(s.headmaster || '', W - M - 80, py + 9.5);
+
+  /* footer on every page */
+  var n = doc.getNumberOfPages();
+  for (var i = 1; i <= n; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 158, 168);
+    doc.text('Generated by Madrsa Maintenance Register', M, 291);
+    doc.text('Page ' + i + ' of ' + n, W - M, 291, { align: 'right' });
+  }
+
+  var fname = 'madrsa-report-' + (repState.from || todayISO()) + '_' + (repState.to || todayISO()) + '.pdf';
+  doc.save(fname);
+  toast('PDF file saved');
 }
 function shareReport() {
   var rows = repState.lastRows || reportRows();
@@ -1231,6 +1405,7 @@ function bind() {
     renderReportOutput();
   });
   $('printRep').addEventListener('click', printReport);
+  $('pdfRep').addEventListener('click', buildPdf);
   $('shareRep').addEventListener('click', shareReport);
   $('repCsv').addEventListener('click', function () {
     var rows = repState.lastRows || reportRows();
