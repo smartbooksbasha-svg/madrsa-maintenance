@@ -15,8 +15,9 @@ Live: https://smartbooksbasha-svg.github.io/madrsa-maintenance/
   as PDF" gives the headmaster-ready document; "Share summary" sends the
   text summary via WhatsApp.
 - **Summary** — month-wise stats by category/worker + daily bar chart.
-- **Settings** — language (English / Urdu), auto-fix English toggle, madrsa details (name goes on the report), workers list,
-  backup/restore JSON, clear all.
+- **Settings** — language (English / Urdu), auto-fix English toggle, madrsa
+  profile (photo/logo, details), my profile (name/phone/role — goes on the
+  report as "Prepared by"), workers list, backup/restore JSON, clear all.
 
 ## Facts
 - Offline-first PWA (installable, works with no internet).

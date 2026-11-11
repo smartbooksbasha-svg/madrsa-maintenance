@@ -20,6 +20,11 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
 - [x] v1.1: auto-fix English (HING rules + autoEnglish + titleCase, save wiring,
       Settings toggle #sAutoFix, mmr_autofix, Urdu script never touched)
 - [x] v1.1: sw cache mmr-v2, tests 117/117 green, commit 4d3a555 deployed
+- [x] v1.2: Madrsa profile — photo/logo upload (canvas 512px JPEG) → report
+      header + sidebar crest + favicon; Settings card renamed
+- [x] v1.2: My profile (Shan) — name/phone/role/photo (`mmr_me`), feeds
+      report "Prepared by", incharge synced from profile; backup/restore
+      includes me; sw mmr-v3, tests 130/130, commit 0bbc32c
 
 ## Decisions
 - PWA (not APK): PDF/print core feature — browser print is the proven path;
@@ -33,7 +38,6 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
 - Report = print-to-PDF (@media print) + Web Share summary text. No jsPDF.
 - Local-first: no Supabase needed (single-user register).
 
-NOW: DONE — v1.1 live (commit 4d3a555): English primary + optional Urdu UI +
-auto-fix Hinglish→English on save. Awaiting Shan's next customization round
-(possible: photos per entry, headmaster WhatsApp link, APK wrapper).
+NOW: DONE — v1.2 live (commit 0bbc32c): Urdu UI + auto-fix English + madrsa
+profile (photo/logo) + my profile (Prepared by). Awaiting Shan's next round.
 Backup zip v1.0: $ZYVO_SESSION_DIR/madrsa-maintenance-v1.0.zip.
