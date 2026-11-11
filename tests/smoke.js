@@ -86,7 +86,7 @@ function winToday() {
   ok(t.qa('#todayList .empty').length === 1, 'empty state on boot');
   ok(t.$('pgTitle').textContent === 'Today', 'page title Today');
   ok(t.qa('.navbtn').length === 5, '5 nav buttons');
-  ok(t.$('verChip').textContent.indexOf('v1.1') === 0, 'version chip');
+  ok(t.$('verChip').textContent.indexOf('v1.2') === 0, 'version chip');
   ok(t.$('eCat').options.length === CATS_LEN(), 'category select filled');
 
   /* ---------- 2. add a completed entry ---------- */
@@ -198,7 +198,6 @@ function winToday() {
   t.win.go('settings');
   ok(t.$('sMadrsa').value === 'Madrsa e Mohammadi', 'settings prefilled');
   setVal(t, 'sHead', 'Moulana Abdul Kareem');
-  setVal(t, 'sIncharge', 'Shan');
   t.submit(t.$('setForm'));
   ok(t.ls('mmr_settings').headmaster === 'Moulana Abdul Kareem', 'settings saved');
   setVal(t, 'wName', 'Bashir (painter)');
@@ -222,12 +221,14 @@ function winToday() {
   ok(t.blobUrl() >= 1, 'backup triggers download');
   const backupObj = { app: 'madrsa-maintenance', v: 1, date: '2026-01-05T10:00:00Z',
     entries: [{ id: 'X1', date: winToday(), cat: 'electrical', worker: 'Old Worker', in: '09:00', out: '12:00', work: 'Old work', materials: '', cost: 0, status: 'auto' }],
-    workers: [{ name: 'Old Worker', phone: '' }], settings: { madrsa: 'Test Madrsa', address: '', phone: '', headmaster: 'HM', incharge: 'IC' } };
+    workers: [{ name: 'Old Worker', phone: '' }], settings: { madrsa: 'Test Madrsa', address: '', phone: '', headmaster: 'HM', incharge: 'IC' },
+    me: { name: 'Old Incharge', phone: '', role: 'Secretary', photo: '' } };
   const restored = t.win.applyBackup(backupObj);
   await wait(80);
   ok(restored === true, 'applyBackup returns true');
   ok(t.ls('mmr_entries').length === 1 && t.ls('mmr_entries')[0].worker === 'Old Worker', 'entries replaced by backup');
   ok(t.ls('mmr_settings').madrsa === 'Test Madrsa', 'settings restored');
+  ok(t.ls('mmr_me') && t.ls('mmr_me').name === 'Old Incharge' && t.ls('mmr_me').role === 'Secretary', 'my profile restored from backup');
   t.win.go('today');
   ok(t.$('todayList').textContent.indexOf('Old Worker') > -1, 'restored entry visible in today');
 
@@ -317,6 +318,42 @@ function winToday() {
   ok(t3.$('langSel2').value === 'ur', 'reload: settings select synced');
   ok(t3.win.autoFixOn() === false, 'reload: auto-fix OFF restored');
   ok(t3.$('sAutoFix').checked === false, 'reload: checkbox reflects OFF');
+
+  /* ---------- 19. v1.2: my profile + madrsa profile photo ---------- */
+  t2.win.go('settings');
+  ok(!!t2.$('meForm') && !!t2.$('mPhotoBtn'), 'profile UI present');
+  setVal(t2, 'meName', 'shan');
+  setVal(t2, 'mePhone', '9870011223');
+  setVal(t2, 'meRole', 'in-charge, maintenance register');
+  t2.submit(t2.$('meForm'));
+  const meS = t2.ls('mmr_me');
+  ok(meS && meS.name === 'Shan' && meS.phone === '9870011223' && meS.role === 'in-charge, maintenance register', 'my profile saved (name title-cased)');
+  ok(t2.ls('mmr_settings').incharge === 'Shan', 'incharge synced from my profile');
+  ok(t2.$('toasts').textContent.indexOf('Profile saved') > -1, 'profile saved toast');
+
+  t2.win.go('report');
+  t2.click(t2.q('.chipbtn[data-preset="month"]'));
+  ok(t2.$('repPreview').textContent.indexOf('Shan') > -1, 'prepared-by name in report');
+  ok(t2.$('repPreview').textContent.indexOf('in-charge, maintenance register') > -1, 'prepared-by role in report');
+
+  /* madrsa photo → sidebar logo, report header, print doc */
+  t2.win.go('settings');
+  t2.win.settings.photo = 'data:image/png;base64,iVBORw0KGgo=';
+  t2.win.saveSettings(t2.win.settings);
+  t2.win.applyBrand(); t2.win.applyPhotoPrev();
+  ok(t2.q('#brandLogo').classList.contains('has'), 'madrsa photo shows in sidebar');
+  ok(t2.$('mPhotoBtn').textContent.indexOf('Change photo') > -1, 'upload button becomes Change photo');
+  t2.win.go('report');
+  t2.click(t2.q('.chipbtn[data-preset="month"]'));
+  const rlogo = t2.q('#repPreview .rlogo');
+  ok(rlogo && rlogo.getAttribute('src').indexOf('data:') === 0, 'madrsa photo as report logo');
+  ok(t2.$('printDoc').innerHTML.indexOf('rlogo') > -1, 'print doc has the logo');
+
+  /* remove photo → crest back */
+  t2.win.go('settings');
+  t2.click(t2.$('mPhotoRemove'));
+  ok(t2.ls('mmr_settings').photo === '', 'photo removed persisted');
+  ok(!t2.q('#brandLogo').classList.contains('has'), 'crest back after photo removed');
 
   console.log('RESULT: ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);

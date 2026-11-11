@@ -22,7 +22,8 @@
   <aside class="side" id="side">
     <div class="brand">
       <div class="crest">
-        <svg viewBox="0 0 64 64" aria-hidden="true">
+        <img id="brandLogo" alt="" class="crestimg">
+        <svg viewBox="0 0 64 64" aria-hidden="true" id="crestSvg">
           <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#2f86ea"/><stop offset="1" stop-color="#1b53a8"/>
           </linearGradient></defs>
@@ -71,7 +72,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
         <span>Install app</span>
       </button>
-      <div class="ver" id="verChip">v1.0 · offline</div>
+      <div class="ver" id="verChip">v1.2 · offline</div>
     </div>
   </aside>
 
@@ -227,15 +228,61 @@
             <p class="hint">Turns Hinglish notes into clean English when saving — “light kharab hai” becomes “Light faulty.” The printed report always stays in English.</p>
           </div>
           <div class="card">
-            <h3>Madrsa details</h3>
+            <h3>Madrsa profile</h3>
+            <div class="prow">
+              <div class="pbox" id="mPhotoBox">
+                <img alt="">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1.5 1.5 0 0 1 1.5 1.5V19a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 19V9.5A1.5 1.5 0 0 1 4 8z"/><circle cx="12" cy="14" r="3.4"/></svg>
+              </div>
+              <div class="pacts">
+                <button class="ghostbtn" type="button" id="mPhotoBtn">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  <span>Upload photo</span>
+                </button>
+                <button class="ghostbtn" type="button" id="mPhotoRemove">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2"/><path d="M6 7l1 13a1.5 1.5 0 0 0 1.5 1.4h7A1.5 1.5 0 0 0 17 20l1-13"/></svg>
+                  <span>Remove photo</span>
+                </button>
+              </div>
+              <input type="file" accept="image/*" id="mPhotoFile" class="vhid">
+            </div>
+            <p class="hint">This photo becomes the logo on the report and the app icon.</p>
             <form id="setForm">
               <label>Madrsa name <input type="text" id="sMadrsa" placeholder="Madrsa e Mohammadi"></label>
               <label>Address (optional) <input type="text" id="sAddress" placeholder="Street, area"></label>
               <label>Phone (optional) <input type="tel" id="sPhone" placeholder="Contact number"></label>
               <label>Headmaster name (optional) <input type="text" id="sHead" placeholder="Report signature line"></label>
-              <label>In-charge name (optional) <input type="text" id="sIncharge" placeholder="Who prepares the report"></label>
               <button type="submit" class="primarybtn">Save details</button>
             </form>
+          </div>
+          <div class="card">
+            <h3>My profile</h3>
+            <div class="prow">
+              <div class="pbox pava" id="mePhotoBox">
+                <img alt="">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.4"/><path d="M5.5 19.5c1-3.6 3.5-5.3 6.5-5.3s5.5 1.7 6.5 5.3"/></svg>
+              </div>
+              <div class="pacts">
+                <button class="ghostbtn" type="button" id="mePhotoBtn">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  <span>Upload photo</span>
+                </button>
+                <button class="ghostbtn" type="button" id="mePhotoRemove">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2"/><path d="M6 7l1 13a1.5 1.5 0 0 0 1.5 1.4h7A1.5 1.5 0 0 0 17 20l1-13"/></svg>
+                  <span>Remove photo</span>
+                </button>
+              </div>
+              <input type="file" accept="image/*" id="mePhotoFile" class="vhid">
+            </div>
+            <form id="meForm">
+              <label>Your name <input type="text" id="meName" placeholder="e.g. Shan"></label>
+              <div class="frow">
+                <label>Phone <input type="tel" id="mePhone" placeholder="Contact number"></label>
+                <label>Role (optional) <input type="text" id="meRole" placeholder="e.g. In-charge, Secretary"></label>
+              </div>
+              <button type="submit" class="primarybtn">Save profile</button>
+            </form>
+            <p class="hint">Your name and role appear on the report as “Prepared by”.</p>
           </div>
           <div class="card">
             <h3>Workers list</h3>

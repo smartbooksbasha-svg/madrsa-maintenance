@@ -3,8 +3,8 @@
    report (print→PDF), monthly summary, backup. No dependencies. */
 'use strict';
 
-var APP_VER = 'v1.1';
-var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix' };
+var APP_VER = 'v1.2';
+var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix', ME: 'mmr_me' };
 
 var CATS = [
   { id: 'electrical', label: 'Electrical',   dot: '#d97706' },
@@ -88,7 +88,8 @@ function loadEntries() { var a = lsGet(LS.E, []); return Array.isArray(a) ? a : 
 function saveEntries(a) { return lsSet(LS.E, a); }
 function loadWorkers() { var a = lsGet(LS.W, []); return Array.isArray(a) ? a : []; }
 function saveWorkers(a) { return lsSet(LS.W, a); }
-var DEF_SET = { madrsa: 'Madrsa e Mohammadi', address: '', phone: '', headmaster: '', incharge: '' };
+var DEF_SET = { madrsa: 'Madrsa e Mohammadi', address: '', phone: '', headmaster: '', incharge: '', photo: '' };
+var DEF_ME = { name: '', phone: '', role: '', photo: '' };
 function loadSettings() {
   var s = lsGet(LS.S, {});
   var out = {};
@@ -96,6 +97,62 @@ function loadSettings() {
   return out;
 }
 function saveSettings(s) { return lsSet(LS.S, s); }
+function loadMe() { return Object.assign({}, DEF_ME, lsGet(LS.ME, {}) || {}); }
+function saveMe(m) { me = m; return lsSet(LS.ME, m); }
+
+/* ---------- profile photos (madrsa logo + my photo) ---------- */
+function readPhoto(file, cb) {
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { toast('Could not read that image'); return; }
+  var fr = new FileReader();
+  fr.onload = function () {
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var mx = 512, w = img.width || mx, h = img.height || mx;
+        var sc = Math.min(1, mx / Math.max(w, h));
+        var cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(w * sc));
+        cv.height = Math.max(1, Math.round(h * sc));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        cb(cv.toDataURL('image/jpeg', 0.82));
+      } catch (e) { cb(String(fr.result)); }
+    };
+    img.onerror = function () { toast('Could not read that image'); };
+    img.src = String(fr.result);
+  };
+  fr.onerror = function () { toast('Could not read that image'); };
+  fr.readAsDataURL(file);
+}
+/* uploaded madrsa photo replaces the crest everywhere (sidebar + report + favicon) */
+function applyBrand() {
+  var src = settings.photo || '';
+  var bl = $('brandLogo');
+  if (bl) {
+    if (src) { bl.src = src; }
+    else bl.removeAttribute('src');
+    bl.classList.toggle('has', !!src);
+  }
+  var fav = document.querySelector('link[rel="icon"]');
+  if (fav) fav.setAttribute('href', src || 'icons/icon-192.png');
+}
+function applyPhotoPrev() {
+  var mp = $('mPhotoBox'), mep = $('mePhotoBox');
+  if (mp) {
+    var img = mp.querySelector('img');
+    if (settings.photo) img.src = settings.photo;
+    mp.classList.toggle('has', !!settings.photo);
+    var b = $('mPhotoBtn');
+    if (b) b.querySelector('span').textContent = tStr(settings.photo ? 'Change photo' : 'Upload photo');
+  }
+  if (mep) {
+    var img2 = mep.querySelector('img');
+    if (me.photo) img2.src = me.photo;
+    mep.classList.toggle('has', !!me.photo);
+    var b2 = $('mePhotoBtn');
+    if (b2) b2.querySelector('span').textContent = tStr(me.photo ? 'Change photo' : 'Upload photo');
+  }
+}
 
 /* ---------- icons ---------- */
 function svgi(inner) {
@@ -109,7 +166,9 @@ var IC = {
   empty: svgi('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>'),
   warn: svgi('<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'),
   phone: svgi('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2z"/>'),
-  wrench: svgi('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>')
+  wrench: svgi('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'),
+  camera: svgi('<path d="M4 8h3l2-3h6l2 3h3a1.5 1.5 0 0 1 1.5 1.5V19a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 19V9.5A1.5 1.5 0 0 1 4 8z"/><circle cx="12" cy="14" r="3.4"/>'),
+  person: svgi('<circle cx="12" cy="8.5" r="3.4"/><path d="M5.5 19.5c1-3.6 3.5-5.3 6.5-5.3s5.5 1.7 6.5 5.3"/>')
 };
 var CREST = '<svg viewBox="0 0 64 64" aria-hidden="true">'
   + '<defs><linearGradient id="cg2" x1="0" y1="0" x2="0" y2="1">'
@@ -175,11 +234,19 @@ var I18N_UR = {
   'Auto-fix English': 'انگریزی خودکار درست',
   'Turns Hinglish notes into clean English when saving — “light kharab hai” becomes “Light faulty.” The printed report always stays in English.':
     'محفوظ کرتے وقت ہنگلش نوٹ خودکار صاف انگریزی بن جاتے ہیں — “light kharab hai” بنے گا “Light faulty.” چھپی رپورٹ ہمیشہ انگریزی میں رہتی ہے۔',
-  'Madrsa details': 'مدرسہ کی تفصیلات', 'Madrsa name': 'مدرسہ کا نام',
+  'Madrsa profile': 'مدرسہ کی پروفائل', 'Madrsa name': 'مدرسہ کا نام',
   'Address (optional)': 'پتہ (اختیاری)', 'Phone (optional)': 'فون (اختیاری)',
   'Headmaster name (optional)': 'ہیڈ ماسٹر کا نام (اختیاری)',
-  'In-charge name (optional)': 'ذمہ دار کا نام (اختیاری)',
   'Save details': 'تفصیلات محفوظ کریں', 'Workers list': 'کاریگروں کی فہرست',
+  'My profile': 'میری پروفائل', 'Your name': 'آپ کا نام',
+  'Role (optional)': 'عہدہ (اختیاری)',
+  'e.g. In-charge, Secretary': 'مثلاً ذمہ دار، سیکرٹری',
+  'Save profile': 'پروفائل محفوظ کریں',
+  'Your name and role appear on the report as “Prepared by”.': 'آپ کا نام اور عہدہ رپورٹ میں “Prepared by” کے طور پر آتا ہے۔',
+  'Upload photo': 'تصویر لگائیں', 'Change photo': 'تصویر بدلیں',
+  'Remove photo': 'تصویر ہٹائیں',
+  'This photo becomes the logo on the report and the app icon.':
+    'یہ تصویر رپورٹ اور ایپ آئیکن پر لوگو بن جاتی ہے۔',
   'Name': 'نام', 'Add worker': 'کاریگر شامل کریں',
   'These names appear as suggestions while adding entries.':
     'یہ نام انٹری شامل کرتے وقت تجویز کے طور پر نظر آتے ہیں۔',
@@ -205,6 +272,9 @@ var I18N_UR = {
   'This worker is already in the list': 'یہ کاریگر پہلے سے فہرست میں ہے',
   'Enter a worker name': 'کاریگر کا نام لکھیں',
   'Details saved': 'تفصیلات محفوظ ہو گئیں',
+  'Profile saved': 'پروفائل محفوظ ہو گئی', 'Enter your name': 'اپنا نام لکھیں',
+  'Photo updated': 'تصویر بدل گئی', 'Photo removed': 'تصویر ہٹ گئی',
+  'Could not read that image': 'یہ تصویر نہیں پڑھی جا سکی',
   'Backup file downloaded': 'بیک اپ فائل ڈاؤن لوڈ ہو گئی',
   'Backup restored': 'بیک اپ بحال ہو گیا', 'All data cleared': 'تمام ڈیٹا صاف ہو گیا',
   'Nothing to clear': 'صاف کرنے کو کچھ نہیں',
@@ -388,6 +458,7 @@ function autoFixOn() {
 var entries = [];
 var workers = [];
 var settings = loadSettings();
+var me = loadMe();
 var editingId = null;
 var view = 'today';
 var repState = { preset: 'month', from: null, to: null };
@@ -778,7 +849,7 @@ function reportDocHtml(rows) {
   });
 
   var h = '<div class="rdoc">';
-  h += '<div class="rh"><div class="rcrest">' + CREST + '</div><div>'
+  h += '<div class="rh"><div class="rcrest">' + (s.photo ? '<img class="rlogo" src="' + esc(s.photo) + '" alt="">' : CREST) + '</div><div>'
     + '<div class="rname">' + esc(s.madrsa || 'Madrsa') + '</div>'
     + '<div class="rsub">' + esc([s.address, s.phone].filter(Boolean).join(' · ') || 'Maintenance Department') + '</div>'
     + '</div></div>';
@@ -836,7 +907,7 @@ function reportDocHtml(rows) {
   }
 
   h += '<div class="rsig">'
-    + '<div class="sig"><div class="line"></div><b>Prepared by</b>' + esc(s.incharge || 'In-charge, Maintenance') + '</div>'
+    + '<div class="sig"><div class="line"></div><b>Prepared by</b>' + esc(me.name || s.incharge || 'In-charge, Maintenance') + (me.role ? ' — ' + esc(me.role) : '') + '</div>'
     + '<div class="sig"><div class="line"></div><b>Headmaster</b>' + esc(s.headmaster || '') + '</div>'
     + '</div>';
   h += '<div class="rfoot">Generated by Madrsa Maintenance Register</div></div>';
@@ -997,7 +1068,10 @@ function renderSettings() {
   $('sAddress').value = settings.address || '';
   $('sPhone').value = settings.phone || '';
   $('sHead').value = settings.headmaster || '';
-  $('sIncharge').value = settings.incharge || '';
+  $('meName').value = me.name || settings.incharge || '';
+  $('mePhone').value = me.phone || '';
+  $('meRole').value = me.role || '';
+  applyPhotoPrev();
   renderWorkerList();
 }
 function renderWorkerList() {
@@ -1016,7 +1090,7 @@ function renderWorkerList() {
 function backupData() {
   var payload = {
     app: 'madrsa-maintenance', v: 1, date: new Date().toISOString(),
-    entries: entries, workers: workers, settings: settings
+    entries: entries, workers: workers, settings: settings, me: me
   };
   if (download('madrsa-maintenance-backup-' + fileStamp() + '.json', JSON.stringify(payload, null, 2), 'application/json')) {
     toast('Backup file downloaded');
@@ -1034,9 +1108,12 @@ function applyBackup(obj) {
   entries = obj.entries.slice();
   workers = (obj.workers || []).slice();
   if (obj.settings) settings = Object.assign({}, DEF_SET, obj.settings);
+  if (obj.me) saveMe(Object.assign({}, DEF_ME, obj.me));
+  else saveMe(me);
   saveEntries(entries); saveWorkers(workers); saveSettings(settings);
   toast(tStr('Backup restored') + ' — ' + nE + ' entries');
   fillWorkerFilter();
+  applyBrand();
   refreshView();
   if (view === 'settings') renderSettings();
   return true;
@@ -1170,15 +1247,51 @@ function bind() {
   $('setForm').addEventListener('submit', function (ev) {
     ev.preventDefault();
     var f = $('setForm');
-    settings = {
+    settings = Object.assign({}, settings, {
       madrsa: f.querySelector('#sMadrsa').value.trim() || DEF_SET.madrsa,
       address: f.querySelector('#sAddress').value.trim(),
       phone: f.querySelector('#sPhone').value.trim(),
-      headmaster: f.querySelector('#sHead').value.trim(),
-      incharge: f.querySelector('#sIncharge').value.trim()
-    };
+      headmaster: f.querySelector('#sHead').value.trim()
+    });
     saveSettings(settings);
     toast('Details saved');
+  });
+  $('meForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var name = $('meName').value.trim(), ph = $('mePhone').value.trim(), role = $('meRole').value.trim();
+    if (!name) { toast('Enter your name'); return; }
+    if (autoFixOn()) name = titleCase(name);
+    saveMe({ name: name, phone: ph, role: role, photo: me.photo || '' });
+    settings.incharge = name; /* keep the report signature in sync */
+    saveSettings(settings);
+    toast('Profile saved');
+  });
+  /* profile photos — madrsa logo + my photo */
+  $('mPhotoBtn').addEventListener('click', function () { $('mPhotoFile').click(); });
+  $('mPhotoFile').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    this.value = '';
+    if (f) readPhoto(f, function (d) {
+      settings.photo = d; saveSettings(settings);
+      applyBrand(); applyPhotoPrev(); toast('Photo updated');
+    });
+  });
+  $('mPhotoRemove').addEventListener('click', function () {
+    settings.photo = ''; saveSettings(settings);
+    applyBrand(); applyPhotoPrev(); toast('Photo removed');
+  });
+  $('mePhotoBtn').addEventListener('click', function () { $('mePhotoFile').click(); });
+  $('mePhotoFile').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    this.value = '';
+    if (f) readPhoto(f, function (d) {
+      saveMe({ name: me.name, phone: me.phone, role: me.role, photo: d });
+      applyPhotoPrev(); toast('Photo updated');
+    });
+  });
+  $('mePhotoRemove').addEventListener('click', function () {
+    saveMe({ name: me.name, phone: me.phone, role: me.role, photo: '' });
+    applyPhotoPrev(); toast('Photo removed');
   });
   $('wForm').addEventListener('submit', function (ev) {
     ev.preventDefault();
@@ -1228,6 +1341,7 @@ function init() {
   $('sumMonth').value = todayISO().slice(0, 7);
   fillCatSelect();
   fillWorkerDatalist();
+  applyBrand();
   bind();
   var afc = $('sAutoFix');
   if (afc) afc.checked = autoFixOn();
