@@ -3,7 +3,7 @@
    report (print→PDF), monthly summary, backup. No dependencies. */
 'use strict';
 
-var APP_VER = 'v1.7';
+var APP_VER = 'v1.8';
 var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix', ME: 'mmr_me' };
 
 var CATS = [
@@ -462,6 +462,9 @@ var I18N_UR = {
   'No internet — connect and try again': 'انٹرنیٹ نہیں — جڑ کر دوبارہ کوشش کریں',
   'A new version is ready — tap Update.': 'نیا ورژن تیار ہے — اپ ڈیٹ دبائیں۔',
   'Installed': 'نصب شدہ',
+  'Offline ready — every file is saved on this device.': 'آف لائن تیار — تمام فائلیں اس ڈیوائس پر محفوظ ہیں۔',
+  'Saving offline files': 'آف لائن فائلیں محفوظ ہو رہی ہیں',
+  'Offline saving is not available in this browser.': 'اس براؤزر میں آف لائن محفوظ کرنا دستیاب نہیں۔',
   'Photo added': 'تصویر شامل ہو گئی',
   'Backup is large': 'بیک اپ بڑا ہے',
   'Photos are compressed and stay on this phone only. Add the “after” photo when the work is finished.':
@@ -716,7 +719,7 @@ function go(v) {
   if (v === 'register') renderRegister();
   if (v === 'report') initReportView();
   if (v === 'summary') renderSummary();
-  if (v === 'settings') renderSettings();
+  if (v === 'settings') { renderSettings(); offlineStatus(); }
 }
 function openDrawer() { $('side').classList.add('open'); $('scrim').classList.add('open'); }
 function closeDrawer() { $('side').classList.remove('open'); $('scrim').classList.remove('open'); }
@@ -2165,6 +2168,31 @@ function bind() {
   });
 }
 
+/* ---------- offline readiness (is every file saved on this device?) ---------- */
+var OFF_NEED = [
+  './index.html', './styles.css', './app.js',
+  './vendor/jspdf.umd.min.js', './vendor/jspdf.plugin.autotable.min.js',
+  './vendor/html2canvas.min.js', './manifest.webmanifest',
+  './icons/icon-192.png', './fonts/jameel-noori-nastaleeq.woff2'
+];
+function offlineStatus() {
+  var note = $('offNote');
+  if (!note) return;
+  if (!window.caches || !caches.match) {
+    note.textContent = tStr('Offline saving is not available in this browser.');
+    return;
+  }
+  Promise.all(OFF_NEED.map(function (u) {
+    return caches.match(u).then(function (r) { return !!r; }).catch(function () { return false; });
+  })).then(function (flags) {
+    var have = flags.filter(Boolean).length;
+    note.classList.toggle('off-ok', have === flags.length);
+    note.textContent = have === flags.length
+      ? tStr('Offline ready — every file is saved on this device.')
+      : tStr('Saving offline files') + ' (' + have + '/' + flags.length + ')…';
+  }).catch(function () {});
+}
+
 /* =================== boot =================== */
 function init() {
   entries = loadEntries();
@@ -2175,6 +2203,7 @@ function init() {
   $('verChip').textContent = APP_VER + ' · offline';
   var uv = $('updVer'); if (uv) uv.textContent = APP_VER;
   setUpdateState('idle');
+  offlineStatus();
   /* after a hard update the URL carries ?v=<ts> — keep the address clean */
   if (/[?&]v=\d+/.test(location.search)) {
     try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}

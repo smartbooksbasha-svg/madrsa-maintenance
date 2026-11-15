@@ -153,7 +153,7 @@ function winToday() {
   ok(t.qa('#todayList .empty').length === 1, 'empty state on boot');
   ok(t.$('pgTitle').textContent === 'Today', 'page title Today');
   ok(t.qa('.navbtn').length === 5, '5 nav buttons');
-  ok(t.$('verChip').textContent.indexOf('v1.7') === 0, 'version chip');
+  ok(t.$('verChip').textContent.indexOf('v1.8') === 0, 'version chip');
   ok(t.$('eCat').options.length === CATS_LEN(), 'category select filled');
 
   /* ---------- 2. add a completed entry ---------- */
@@ -652,8 +652,8 @@ function winToday() {
   const t6 = await boot({});
   ok(t6.qa('[data-update]').length === 3, 'update: three visible buttons (topbar, sidebar, settings)');
   ok(t6.$('updTop') !== null && t6.$('updSide') !== null && t6.$('updBtn2') !== null, 'update: buttons have ids');
-  ok(t6.$('verChip').textContent.indexOf('v1.7') > -1, 'update: version chip shows APP_VER');
-  ok(t6.$('updVer').textContent === 'v1.7', 'update: settings shows installed version');
+  ok(t6.$('verChip').textContent.indexOf('v1.8') > -1, 'update: version chip shows APP_VER');
+  ok(t6.$('updVer').textContent === 'v1.8', 'update: settings shows installed version');
 
   /* fresh URL keeps path + hash, adds a cache-busting v= */
   const fu = t6.win.freshUrl();
@@ -668,7 +668,7 @@ function winToday() {
   ok(t6.$('updNote').textContent.indexOf('new version') > -1, 'update: ready note in settings');
   t6.win.setUpdateState('idle');
   ok(t6.qa('[data-update] .updot:not(.hide)').length === 0, 'update: idle state hides the dots');
-  ok(t6.$('updNote').textContent.indexOf('v1.7') > -1, 'update: idle note shows installed version');
+  ok(t6.$('updNote').textContent.indexOf('v1.8') > -1, 'update: idle note shows installed version');
 
   /* click → fetch live version, drop caches, unregister SW, reload fresh */
   let unreg = 0, deleted = [];
@@ -698,7 +698,7 @@ function winToday() {
 
   /* same version → friendly message, still reloads fresh */
   const t7 = await boot({});
-  t7.win.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve("var APP_VER = 'v1.7';") });
+  t7.win.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve("var APP_VER = 'v1.8';") });
   t7.click(t7.$('updTop'));
   await wait(200);
   ok(t7.$('toasts').textContent.indexOf('latest') > -1, 'update: same version says already latest');
@@ -716,6 +716,44 @@ function winToday() {
   ok(del2 === 0, 'update: offline never deletes the offline cache');
   ok(t8.$('toasts').textContent.indexOf('No internet') > -1, 'update: offline explains why it stopped');
   ok(!t8.win.__updateUrl, 'update: offline does not navigate away');
+
+  /* ---------- 24. v1.8: FULL OFFLINE audit ---------- */
+  /* static: the shell must only reference files inside the repo */
+  const fsx = require('fs');
+  const rd = f => fsx.readFileSync(path.join(ROOT, f), 'utf8');
+  const swSrc = rd('sw.js');
+  const shellPaths = (swSrc.match(/'(\.\/[^']+)'/g) || []).map(x => x.slice(2, -1));
+  ok(shellPaths.length >= 14, 'offline: sw lists the whole shell (' + shellPaths.length + ' paths)');
+  let missing = shellPaths.filter(p => !fsx.existsSync(path.join(ROOT, p)));
+  ok(missing.length === 0, 'offline: every precached file exists' + (missing.length ? ' — missing ' + missing.join(', ') : ''));
+  ok(swSrc.indexOf('./fonts/jameel-noori-nastaleeq.woff2') > -1, 'offline: Urdu report font is precached (optional list)');
+  ok(/'mmr-v9'/.test(swSrc), 'offline: cache name bumped');
+  ok(/ignoreSearch: true/.test(swSrc), 'offline: cached lookup ignores ?v= query');
+  ok(/caches\.match\('\.\/index\.html'\)/.test(swSrc), 'offline: navigation falls back to index.html');
+
+  /* static: no external hosts anywhere in the app files */
+  const externals = [];
+  ['index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'sw.js'].forEach(f => {
+    const m = rd(f).match(/https?:\/\/[a-z0-9.\-]+/gi) || [];
+    m.forEach(u => { if (!/github\.io/i.test(u)) externals.push(f + ': ' + u); });
+  });
+  ok(externals.length === 0, 'offline: zero external requests' + (externals.length ? ' — ' + externals.join(', ') : ''));
+
+  /* runtime: offline status line in Settings */
+  const t9 = await boot({});
+  ok(t9.$('offNote') !== null, 'offline: About card shows an offline status line');
+  ok(t9.$('offNote').textContent.indexOf('not available') > -1, 'offline: jsdom (no cache API) is reported honestly');
+  t9.win.caches = {
+    match: (u) => Promise.resolve(u.indexOf('jameel') > -1 ? null : { ok: true })
+  };
+  t9.win.offlineStatus();
+  await wait(60);
+  ok(t9.$('offNote').textContent.indexOf('Saving offline files') > -1, 'offline: partial cache reports progress');
+  t9.win.caches = { match: () => Promise.resolve({ ok: true }) };
+  t9.win.offlineStatus();
+  await wait(60);
+  ok(t9.$('offNote').textContent.indexOf('Offline ready') > -1, 'offline: complete cache reports ready');
+  ok(t9.$('offNote').classList.contains('off-ok'), 'offline: ready state is styled green');
 
   console.log('RESULT: ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);

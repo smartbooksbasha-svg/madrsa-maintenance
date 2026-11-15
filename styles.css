@@ -504,3 +504,6 @@ html[dir="rtl"] input[type="number"],html[dir="rtl"] input[type="search"]{direct
 .updstat{font-size:12px;color:var(--mut);line-height:1.45}
 .updstat b{color:var(--ink)}
 @media(prefers-reduced-motion:reduce){.upbtn.busy svg,.iconbtn.upd.busy svg{animation:none}}
+
+/* offline readiness line (Settings → About) */
+#offNote.off-ok{color:var(--ok);font-weight:700}

@@ -1,5 +1,7 @@
-/* Madrsa Maintenance Register — service worker (network-first, offline fallback) */
-const CACHE = 'mmr-v8';
+/* Madrsa Maintenance Register — service worker (network-first, full offline)
+   CACHE bump on every change. SHELL = must-have files, OPTIONAL = big extras
+   (Urdu report font) cached in the background so install can never fail. */
+const CACHE = 'mmr-v9';
 const SHELL = [
   './',
   './index.html',
@@ -16,9 +18,25 @@ const SHELL = [
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon-180.png'
 ];
+/* big, only needed for Urdu reports — downloaded once, never blocks install */
+const OPTIONAL = ['./fonts/jameel-noori-nastaleeq.woff2'];
+
+/* one file at a time: a single 404 must not leave the whole app uncached */
+function addAll(cache, urls) {
+  return Promise.all(urls.map(function (u) {
+    return cache.add(new Request(u, { cache: 'reload' })).then(function () { return true; })
+      .catch(function () { return false; });
+  }));
+}
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => addAll(c, SHELL))
+      .then(c => addAll(c, OPTIONAL))          /* best effort, background */
+      .catch(() => {})
+      .then(() => self.skipWaiting())
+  );
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
@@ -31,8 +49,12 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     fetch(r).then(res => {
       const c = res.clone();
-      caches.open(CACHE).then(x => x.put(r, c));
+      caches.open(CACHE).then(x => x.put(r, c)).catch(() => {});
       return res;
-    }).catch(() => caches.match(r).then(h => h || caches.match('./index.html')))
+    }).catch(() =>
+      caches.match(r, { ignoreSearch: true })
+        .then(h => h || caches.match('./index.html'))
+        .then(h => h || caches.match('./'))
+    )
   );
 });

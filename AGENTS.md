@@ -12,13 +12,13 @@ mosque crest brand, day/night theme.
   `rowsToCSV`, `applyBackup`, `filteredEntries`, `durOf`, `go`, photo layer
   (`phOpen/phPut/phGet/phDel/phAll/phClear`, `compressPhoto`, `openViewer`)
 - `styles.css` — design tokens + `@media print` (only `#printDoc` prints)
-- `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v8)
+- `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v9)
 - `vendor/jspdf.umd.min.js` + `vendor/jspdf.plugin.autotable.min.js` +
   `vendor/html2canvas.min.js` (1.4.1) — self-hosted PDF libs, in sw SHELL
 - `fonts/jameel-noori-nastaleeq.woff2` (5.5MB) — Urdu report font, lazy
   (downloaded when an Urdu report is first shown; runtime-cached by sw)
 - `manifest.webmanifest`, `icons/` (mkicon.py = pure-stdlib generator)
-- `tests/smoke.js` — jsdom smoke, run `npm test` (218 asserts, must stay green)
+- `tests/smoke.js` — jsdom smoke, run `npm test` (230 asserts, must stay green)
 
 ## Conventions
 - Form inputs have NO name attributes — read via `$('id')`, never
@@ -68,6 +68,16 @@ mosque crest brand, day/night theme.
   buttons. `?v=` is stripped with `history.replaceState` after load.
   ⚠️ Never clear caches without a successful network check — that bricks the
   offline app.
+
+- **v1.8 offline rules:** sw `install` adds SHELL **one file at a time**
+  (`addAll()` helper) so a single 404 cannot leave the app uncached, then adds
+  `OPTIONAL` (the 5.5MB Urdu font) best-effort, then `skipWaiting`. Offline
+  fallback: `caches.match(r,{ignoreSearch:true})` → `./index.html` → `./`
+  (needed because update reloads carry `?v=`). `offlineStatus()` (Settings →
+  About, `#offNote`) checks 9 key files with `caches.match` and prints
+  "Offline ready" (`.off-ok` green) or "Saving offline files (n/9)…".
+  ⚠️ No external hosts allowed in any app file — the test suite fails if one
+  appears. Everything (jspdf, autotable, html2canvas, fonts, icons) is local.
 
 ## Deploy
 Push to `main` → GitHub Pages (root). Live:

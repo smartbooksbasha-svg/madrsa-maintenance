@@ -33,7 +33,10 @@ Live: https://smartbooksbasha-svg.github.io/madrsa-maintenance/
   included, v2), photo storage usage, clear all.
 
 ## Facts
-- Offline-first PWA (installable, works with no internet).
+- Offline-first PWA — **fully offline after one online load**: every file it
+  uses (styles, script, PDF engine, html2canvas, fonts incl. the Urdu report
+  font, icons) is precached on the device. No CDN, no external request.
+  Settings → About shows "Offline ready" when the copy is complete.
 - Data lives in this device's localStorage — no server, no login.
 - Vanilla HTML/CSS/JS, zero dependencies, self-hosted fonts.
 - v1.1: UI can switch to **Urdu** (topbar + Settings); the printed
@@ -43,7 +46,8 @@ Live: https://smartbooksbasha-svg.github.io/madrsa-maintenance/
   script is never modified.
 
 ## Dev
-- `npm test` — jsdom smoke test (218 assertions; photo layer tested with a
-  stubbed IndexedDB, update flow with stubbed fetch/caches/service worker).
+- `npm test` — jsdom smoke test (230 assertions; photo layer tested with a
+  stubbed IndexedDB, update flow with stubbed fetch/caches/service worker, plus
+  a static offline audit: every precached path exists, zero external hosts).
 - `python3 tools/mkicon.py` — regenerate PWA icons.
 - After any web change: bump the `CACHE` name in `sw.js`.

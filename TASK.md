@@ -80,6 +80,17 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
       SW registration moved from index.html into `initSw()`.
 - [x] v1.7: sw mmr-v8, verChip/updVer v1.7, tests 218/218 green
 
+- [x] v1.8: **fully offline hardening** — sw install precaches SHELL file-by-file
+      (one 404 can no longer kill the whole offline copy), Urdu report font
+      (5.5MB) in a best-effort OPTIONAL list cached in the background, offline
+      fallback uses `ignoreSearch` so `?v=` reloads still resolve, then
+      `index.html` → `./`. Settings → About shows a live **offline status**
+      ("Offline ready — every file is saved on this device." / "Saving offline
+      files (8/9)…").
+- [x] v1.8: offline audit in tests — every precache path must exist on disk,
+      zero external hosts in index/styles/app/manifest/sw, cache name bumped,
+      Urdu font precached. sw mmr-v9, tests 230/230 green.
+
 ## Decisions
 - PWA (not APK): PDF/print core feature — browser print is the proven path;
   installs on home screen like an app, works offline. APK wrapper possible later.
@@ -93,7 +104,9 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
   in vendor/) + Web Share summary text. Urdu-script data → print fallback
   (jsPDF core fonts lack Arabic glyphs; print HTML renders Urdu fine).
 
-NOW: v1.7 complete in code (218 tests green) — committing + deploying.
+NOW: v1.8 complete in code (230 tests green) — committing + deploying.
+Full offline = one online load to install; after that everything works with
+zero network (entries, photos, reports, PDFs, Urdu PDF, install).
 Report order now: header → prepared-by → title → meta → 1 Summary by category
 → 2 Detailed register → 3 Photo record (optional) → follow-ups → signatures.
 Next round: Shan's feedback on photos (e.g. per-photo caption, WhatsApp share
