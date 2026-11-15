@@ -481,3 +481,26 @@ html[dir="rtl"] input[type="number"],html[dir="rtl"] input[type="search"]{direct
 @media(max-width:420px){
   .photorow{grid-template-columns:1fr}
 }
+
+/* ---------- app update (hard refresh button) ---------- */
+.verrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.upbtn{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:4px 9px;
+  border-radius:9px;border:1px solid var(--line);background:var(--surf);color:var(--ink);
+  font-family:var(--f-head);font-size:11.5px;font-weight:800;cursor:pointer;
+  transition:border-color .18s,color .18s,background .18s}
+.upbtn svg{width:14px;height:14px}
+.upbtn:hover{border-color:color-mix(in srgb,var(--acc) 50%,var(--line));color:var(--acc)}
+.upbtn.has-update{border-color:var(--acc);color:var(--acc);
+  background:color-mix(in srgb,var(--acc) 10%,var(--surf))}
+.iconbtn.upd{position:relative}
+.iconbtn.upd.has-update{color:var(--acc)}
+.updot{width:8px;height:8px;border-radius:50%;background:var(--acc);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 22%,transparent);flex:none}
+.iconbtn.upd .updot{position:absolute;top:5px;right:5px;width:7px;height:7px;box-shadow:none}
+.upbtn.busy svg,.iconbtn.upd.busy svg{animation:upspin 1s linear infinite}
+@keyframes upspin{to{transform:rotate(360deg)}}
+.updrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.updrow .primarybtn{flex:0 0 auto}
+.updstat{font-size:12px;color:var(--mut);line-height:1.45}
+.updstat b{color:var(--ink)}
+@media(prefers-reduced-motion:reduce){.upbtn.busy svg,.iconbtn.upd.busy svg{animation:none}}

@@ -22,6 +22,11 @@ Live: https://smartbooksbasha-svg.github.io/madrsa-maintenance/
   when it is done (camera or gallery). Photos are compressed to max 1280px and
   stored privately in IndexedDB on this phone, never in the text data. Tap any
   thumbnail for a full-screen view; the Register has a Photos column.
+- **Update app** — a refresh button in the topbar, the sidebar footer and
+  Settings → About. It fetches the live version, clears the offline cache,
+  removes the old service worker and reloads a fresh copy (a dot appears on
+  the button when a new version is already downloaded). Needs internet; it
+  refuses to run offline so the offline app never gets wiped.
 - **Settings** — language (English / Urdu), auto-fix English toggle, madrsa
   profile (photo/logo, details), my profile (name/phone/role — goes on the
   report as "Prepared by"), workers list, backup/restore JSON (photos
@@ -38,7 +43,7 @@ Live: https://smartbooksbasha-svg.github.io/madrsa-maintenance/
   script is never modified.
 
 ## Dev
-- `npm test` — jsdom smoke test (183 assertions; photo layer tested with a
-  stubbed IndexedDB).
+- `npm test` — jsdom smoke test (218 assertions; photo layer tested with a
+  stubbed IndexedDB, update flow with stubbed fetch/caches/service worker).
 - `python3 tools/mkicon.py` — regenerate PWA icons.
 - After any web change: bump the `CACHE` name in `sw.js`.

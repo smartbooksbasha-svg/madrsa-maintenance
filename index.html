@@ -72,7 +72,13 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
         <span>Install app</span>
       </button>
-      <div class="ver" id="verChip">v1.6 · offline</div>
+      <div class="verrow">
+        <div class="ver" id="verChip">v1.7 · offline</div>
+        <button class="upbtn" id="updSide" data-update="side" title="Update app" aria-label="Update app">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.4 5.8"/><path d="M20 4.5V11h-6.5"/></svg>
+          <span>Update</span><i class="updot hide"></i>
+        </button>
+      </div>
     </div>
   </aside>
 
@@ -89,6 +95,10 @@
           <option value="en">English</option>
           <option value="ur">اردو</option>
         </select>
+        <button class="iconbtn upd" id="updTop" data-update="top" aria-label="Update app" title="Update app">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.4 5.8"/><path d="M20 4.5V11h-6.5"/></svg>
+          <i class="updot hide"></i>
+        </button>
         <button class="iconbtn" id="themeBtn" aria-label="Toggle day / night">
           <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>
           <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-moon"><path d="M20.5 13.5A8.5 8.5 0 1 1 10.5 3.5a7 7 0 0 0 10 10z"/></svg>
@@ -322,6 +332,13 @@
           <div class="card">
             <h3>About</h3>
             <p class="hint" id="aboutTxt">Madrsa Maintenance Register — works offline, installs like an app. Entries are stored on this device only.</p>
+            <div class="updrow">
+              <button class="primarybtn" id="updBtn2" data-update="settings">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.4 5.8"/><path d="M20 4.5V11h-6.5"/></svg>
+                <span>Update app</span>
+              </button>
+              <span class="updstat" id="updNote">Installed <b id="updVer">v1.7</b></span>
+            </div>
             <button class="ghostbtn wide" id="installBtn2">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
               <span>Install app</span>
@@ -435,12 +452,5 @@
 <script src="vendor/jspdf.plugin.autotable.min.js" defer></script>
 <script src="vendor/html2canvas.min.js" defer></script>
 <script src="app.js" defer></script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('sw.js').catch(function () {});
-  });
-}
-</script>
 </body>
 </html>

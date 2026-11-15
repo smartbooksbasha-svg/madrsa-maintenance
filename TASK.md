@@ -70,6 +70,16 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
       photo count + size (`navigator.storage.estimate`)
 - [x] v1.6: sw mmr-v7, verChip v1.6, tests 183/183 green
 
+- [x] v1.7: **Update button (hard refresh)** — 3 visible places: topbar icon,
+      sidebar footer "Update", Settings → About "Update app". Tap → fetch
+      `app.js?ts=` no-store → read live APP_VER → delete every cache →
+      unregister SW → `location.replace(<same path>?v=<ts>)` → SW re-registers
+      on load. Offline → refuses (cache wipe would brick the offline app) with
+      a clear toast. Auto badge (`updot`) when a new SW is waiting; auto
+      `reg.update()` on focus + 3s after boot; `controllerchange` reloads once.
+      SW registration moved from index.html into `initSw()`.
+- [x] v1.7: sw mmr-v8, verChip/updVer v1.7, tests 218/218 green
+
 ## Decisions
 - PWA (not APK): PDF/print core feature — browser print is the proven path;
   installs on home screen like an app, works offline. APK wrapper possible later.
@@ -83,7 +93,7 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
   in vendor/) + Web Share summary text. Urdu-script data → print fallback
   (jsPDF core fonts lack Arabic glyphs; print HTML renders Urdu fine).
 
-NOW: v1.6 complete in code (183 tests green) — committing + deploying.
+NOW: v1.7 complete in code (218 tests green) — committing + deploying.
 Report order now: header → prepared-by → title → meta → 1 Summary by category
 → 2 Detailed register → 3 Photo record (optional) → follow-ups → signatures.
 Next round: Shan's feedback on photos (e.g. per-photo caption, WhatsApp share

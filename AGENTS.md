@@ -12,13 +12,13 @@ mosque crest brand, day/night theme.
   `rowsToCSV`, `applyBackup`, `filteredEntries`, `durOf`, `go`, photo layer
   (`phOpen/phPut/phGet/phDel/phAll/phClear`, `compressPhoto`, `openViewer`)
 - `styles.css` — design tokens + `@media print` (only `#printDoc` prints)
-- `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v7)
+- `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v8)
 - `vendor/jspdf.umd.min.js` + `vendor/jspdf.plugin.autotable.min.js` +
   `vendor/html2canvas.min.js` (1.4.1) — self-hosted PDF libs, in sw SHELL
 - `fonts/jameel-noori-nastaleeq.woff2` (5.5MB) — Urdu report font, lazy
   (downloaded when an Urdu report is first shown; runtime-cached by sw)
 - `manifest.webmanifest`, `icons/` (mkicon.py = pure-stdlib generator)
-- `tests/smoke.js` — jsdom smoke, run `npm test` (183 asserts, must stay green)
+- `tests/smoke.js` — jsdom smoke, run `npm test` (218 asserts, must stay green)
 
 ## Conventions
 - Form inputs have NO name attributes — read via `$('id')`, never
@@ -56,6 +56,18 @@ mosque crest brand, day/night theme.
   JNN everywhere. Text in Urdu PDFs is raster (not selectable).
 - All user-entered strings pass through `esc()` before innerHTML.
 - `confirm()`/`window.print()` are stubbed in tests — keep app calls guarded.
+
+- **v1.7 update button:** `hardUpdate(btn)` = `liveVersion()` (fetch
+  `app.js?ts=`, no-store, regex `APP_VER`) → `clearAppCaches()` →
+  `dropServiceWorkers()` → `location.replace(freshUrl())`; `window.__updateUrl`
+  records the target (tests). Offline (`liveVersion()` null) → abort, keep
+  caches. `initSw()` owns registration (`updateViaCache:'none'`), badges
+  `setUpdateState('ready')` when a worker is waiting, `reg.update()` on
+  visibilitychange + 3s after boot, one reload on `controllerchange` (only if
+  there was a controller). `[data-update]` = topbar / sidebar / settings
+  buttons. `?v=` is stripped with `history.replaceState` after load.
+  ⚠️ Never clear caches without a successful network check — that bricks the
+  offline app.
 
 ## Deploy
 Push to `main` → GitHub Pages (root). Live:

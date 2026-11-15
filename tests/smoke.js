@@ -153,7 +153,7 @@ function winToday() {
   ok(t.qa('#todayList .empty').length === 1, 'empty state on boot');
   ok(t.$('pgTitle').textContent === 'Today', 'page title Today');
   ok(t.qa('.navbtn').length === 5, '5 nav buttons');
-  ok(t.$('verChip').textContent.indexOf('v1.6') === 0, 'version chip');
+  ok(t.$('verChip').textContent.indexOf('v1.7') === 0, 'version chip');
   ok(t.$('eCat').options.length === CATS_LEN(), 'category select filled');
 
   /* ---------- 2. add a completed entry ---------- */
@@ -647,6 +647,75 @@ function winToday() {
   ok(t4.$('phAfterBtn').textContent.indexOf('تصویر') > -1, 'ur: after-photo button translated');
   ok(t4.q('#entryModal .photorow') !== null, 'ur: photo row rendered');
   ok(t4.win.I18N_UR['Include work photos'] !== undefined, 'ur: include-photos label translated');
+
+  /* ---------- 23. v1.7: update button = hard refresh ---------- */
+  const t6 = await boot({});
+  ok(t6.qa('[data-update]').length === 3, 'update: three visible buttons (topbar, sidebar, settings)');
+  ok(t6.$('updTop') !== null && t6.$('updSide') !== null && t6.$('updBtn2') !== null, 'update: buttons have ids');
+  ok(t6.$('verChip').textContent.indexOf('v1.7') > -1, 'update: version chip shows APP_VER');
+  ok(t6.$('updVer').textContent === 'v1.7', 'update: settings shows installed version');
+
+  /* fresh URL keeps path + hash, adds a cache-busting v= */
+  const fu = t6.win.freshUrl();
+  ok(fu.indexOf('https://smartbooksbasha-svg.github.io/madrsa-maintenance/?v=') === 0, 'update: freshUrl uses the same path with ?v=');
+  ok(/[?&]v=\d{10,}/.test(fu), 'update: freshUrl carries a timestamp');
+  t6.win.location.hash = '#report';
+  ok(t6.win.freshUrl().indexOf('#report') > -1, 'update: freshUrl keeps the current view hash');
+
+  /* ready state → badge dot on every button + settings note */
+  t6.win.setUpdateState('ready');
+  ok(t6.qa('[data-update] .updot:not(.hide)').length === 2, 'update: ready state shows a dot on the topbar + sidebar buttons');
+  ok(t6.$('updNote').textContent.indexOf('new version') > -1, 'update: ready note in settings');
+  t6.win.setUpdateState('idle');
+  ok(t6.qa('[data-update] .updot:not(.hide)').length === 0, 'update: idle state hides the dots');
+  ok(t6.$('updNote').textContent.indexOf('v1.7') > -1, 'update: idle note shows installed version');
+
+  /* click → fetch live version, drop caches, unregister SW, reload fresh */
+  let unreg = 0, deleted = [];
+  t6.win.fetch = (u, o) => Promise.resolve({ ok: true, text: () => Promise.resolve("var APP_VER = 'v9.9';") });
+  t6.win.caches = {
+    keys: () => Promise.resolve(['mmr-v7', 'other']),
+    delete: (k) => { deleted.push(k); return Promise.resolve(true); }
+  };
+  Object.defineProperty(t6.win.navigator, 'serviceWorker', {
+    configurable: true,
+    value: {
+      controller: {},
+      register: () => Promise.resolve({ addEventListener() {}, update() {}, installing: null, waiting: null }),
+      getRegistrations: () => Promise.resolve([{ unregister: () => { unreg++; return Promise.resolve(true); } }]),
+      addEventListener() {}
+    }
+  });
+  t6.click(t6.$('updBtn2'));
+  await wait(250);
+  ok(t6.$('updBtn2').disabled === true, 'update: button disables while updating');
+  ok(t6.$('updBtn2').textContent.indexOf('Updating') > -1, 'update: button label switches to Updating');
+  ok(t6.qa('[data-update].busy').length === 3, 'update: busy state on all buttons');
+  ok(deleted.length === 2 && deleted.indexOf('mmr-v7') > -1, 'update: every cache is deleted');
+  ok(unreg === 1, 'update: service worker unregistered');
+  ok(/[?&]v=\d{10,}/.test(t6.win.__updateUrl || ''), 'update: reload goes to the cache-busted URL');
+  ok(t6.$('toasts').textContent.indexOf('New version') > -1, 'update: toast announces the new version');
+
+  /* same version → friendly message, still reloads fresh */
+  const t7 = await boot({});
+  t7.win.fetch = () => Promise.resolve({ ok: true, text: () => Promise.resolve("var APP_VER = 'v1.7';") });
+  t7.click(t7.$('updTop'));
+  await wait(200);
+  ok(t7.$('toasts').textContent.indexOf('latest') > -1, 'update: same version says already latest');
+  ok((t7.win.__updateUrl || '').indexOf('?v=') > -1, 'update: same version still reloads a fresh copy');
+
+  /* offline → refuse to wipe the cache, restore the UI (never brick the PWA) */
+  const t8 = await boot({});
+  let del2 = 0;
+  t8.win.fetch = () => Promise.reject(new Error('offline'));
+  t8.win.caches = { keys: () => Promise.resolve(['mmr-v7']), delete: () => { del2++; return Promise.resolve(true); } };
+  t8.click(t8.$('updSide'));
+  await wait(200);
+  ok(t8.$('updSide').disabled === false, 'update: offline restores the button');
+  ok(t8.$('updSide').textContent.indexOf('Update') > -1, 'update: offline restores the label');
+  ok(del2 === 0, 'update: offline never deletes the offline cache');
+  ok(t8.$('toasts').textContent.indexOf('No internet') > -1, 'update: offline explains why it stopped');
+  ok(!t8.win.__updateUrl, 'update: offline does not navigate away');
 
   console.log('RESULT: ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);

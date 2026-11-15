@@ -3,7 +3,7 @@
    report (print→PDF), monthly summary, backup. No dependencies. */
 'use strict';
 
-var APP_VER = 'v1.6';
+var APP_VER = 'v1.7';
 var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix', ME: 'mmr_me' };
 
 var CATS = [
@@ -453,6 +453,15 @@ var I18N_UR = {
   'Add before photo': 'پہلے کی تصویر شامل کریں', 'Add after photo': 'بعد کی تصویر شامل کریں',
   'Remove': 'ہٹائیں', 'Include work photos': 'کام کی تصاویر شامل کریں',
   'work photo': 'کام کی تصویر', 'work photos': 'کام کی تصاویر', 'device use': 'ڈیوائس استعمال',
+  /* app update */
+  'Update': 'اپ ڈیٹ', 'Update app': 'ایپ اپ ڈیٹ کریں',
+  'Updating…': 'اپ ڈیٹ ہو رہی ہے…', 'updating…': 'اپ ڈیٹ ہو رہی ہے…',
+  'Checking for a new version…': 'نیا ورژن دیکھا جا رہا ہے…',
+  'Already on the latest version — reloading fresh': 'یہ تازہ ترین ورژن ہے — دوبارہ لوڈ ہو رہا ہے',
+  'New version': 'نیا ورژن',
+  'No internet — connect and try again': 'انٹرنیٹ نہیں — جڑ کر دوبارہ کوشش کریں',
+  'A new version is ready — tap Update.': 'نیا ورژن تیار ہے — اپ ڈیٹ دبائیں۔',
+  'Installed': 'نصب شدہ',
   'Photo added': 'تصویر شامل ہو گئی',
   'Backup is large': 'بیک اپ بڑا ہے',
   'Photos are compressed and stay on this phone only. Add the “after” photo when the work is finished.':
@@ -1799,6 +1808,119 @@ function closeViewer() {
   pvState = { id: null, slots: [], idx: 0 };
 }
 
+/* =================== app update ===================
+   Shan's ask: one button that forces a HARD update — no stale cache, no old
+   service worker, fresh files. It fetches app.js bypassing the HTTP cache,
+   reads the live APP_VER, drops every cache, unregisters the worker and
+   reloads with a ?v=<timestamp> URL. */
+var UPDATE_BUSY = false;
+function freshUrl() {
+  var u = location.origin + location.pathname;
+  var sep = u.indexOf('?') > -1 ? '&' : '?';
+  return u + sep + 'v=' + Date.now() + (location.hash || '');
+}
+function clearAppCaches() {
+  if (!window.caches || !caches.keys) return Promise.resolve();
+  return caches.keys().then(function (keys) {
+    return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+  }).catch(function () {});
+}
+function dropServiceWorkers() {
+  var sw = navigator.serviceWorker;
+  if (!sw || !sw.getRegistrations) return Promise.resolve();
+  return sw.getRegistrations().then(function (rs) {
+    return Promise.all(rs.map(function (r) { return r.unregister(); }));
+  }).catch(function () {});
+}
+function liveVersion() {
+  if (typeof fetch !== 'function') return Promise.resolve(null);
+  return fetch('app.js?ts=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.text() : ''; })
+    .then(function (txt) {
+      var m = /APP_VER\s*=\s*'([^']+)'/.exec(txt || '');
+      return m ? m[1] : null;
+    })
+    .catch(function () { return null; });
+}
+function setUpdateState(st) {
+  qsa('[data-update]').forEach(function (el) {
+    el.classList.toggle('has-update', st === 'ready');
+    el.classList.toggle('busy', st === 'busy');
+    el.setAttribute('aria-busy', st === 'busy' ? 'true' : 'false');
+    var dot = el.querySelector('.updot');
+    if (dot) dot.classList.toggle('hide', st !== 'ready');
+  });
+  var note = $('updNote');
+  if (note) {
+    if (st === 'ready') note.innerHTML = tStr('A new version is ready — tap Update.');
+    else if (st === 'busy') note.innerHTML = tStr('Updating…');
+    else note.innerHTML = tStr('Installed') + ' <b id="updVer">' + esc(APP_VER) + '</b>';
+  }
+}
+function hardUpdate(btn) {
+  if (UPDATE_BUSY) return;
+  UPDATE_BUSY = true;
+  var label = btn ? btn.querySelector('span') : null;
+  var oldLabel = label ? label.textContent : '';
+  var restore = function () {
+    UPDATE_BUSY = false;
+    if (btn) btn.disabled = false;
+    if (label) label.textContent = oldLabel || tStr('Update app');
+    setUpdateState('idle');
+  };
+  if (btn) btn.disabled = true;
+  if (label) label.textContent = tStr('Updating…');
+  setUpdateState('busy');
+  toast(tStr('Checking for a new version…'));
+  liveVersion().then(function (live) {
+    /* no network → never wipe the offline cache (that would leave the app
+       unloadable until the connection comes back) */
+    if (!live) {
+      restore();
+      toast(tStr('No internet — connect and try again'));
+      return;
+    }
+    if (live === APP_VER) toast(tStr('Already on the latest version — reloading fresh'));
+    else toast(tStr('New version') + ' ' + live + ' — ' + tStr('updating…'));
+    return clearAppCaches().then(dropServiceWorkers).then(function () {
+      var url = freshUrl();
+      window.__updateUrl = url; /* last hard-update target (also used by tests) */
+      try { location.replace(url); }
+      catch (e) { try { location.href = url; } catch (e2) {} }
+      /* reload blocked (in-app browser, jsdom)? put the UI back */
+      setTimeout(restore, 5000);
+    });
+  }).catch(function () { restore(); });
+}
+/* auto-detect a waiting worker → badge on the buttons */
+function initSw() {
+  if (!('serviceWorker' in navigator)) return;
+  var sw = navigator.serviceWorker;
+  var hadController = !!sw.controller;
+  sw.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
+    window.__swReg = reg;
+    reg.addEventListener('updatefound', function () {
+      var nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', function () {
+        if (nw.state === 'installed' && sw.controller) setUpdateState('ready');
+      });
+    });
+    if (reg.waiting && hadController) setUpdateState('ready');
+    setTimeout(function () { try { reg.update(); } catch (e) {} }, 3000);
+  }).catch(function () {});
+  sw.addEventListener('controllerchange', function () {
+    if (!hadController || window.__swReloaded) return;
+    window.__swReloaded = true;
+    try { location.reload(); } catch (e) {}
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && window.__swReg) {
+      try { window.__swReg.update(); } catch (e) {}
+    }
+  });
+}
+
 /* =================== events =================== */
 function bind() {
   qsa('.navbtn').forEach(function (b) {
@@ -1807,6 +1929,9 @@ function bind() {
   $('burger').addEventListener('click', openDrawer);
   $('scrim').addEventListener('click', closeDrawer);
   $('themeBtn').addEventListener('click', toggleTheme);
+  qsa('[data-update]').forEach(function (b) {
+    b.addEventListener('click', function () { hardUpdate(b); });
+  });
 
   /* language + auto-fix English */
   ['langSel', 'langSel2'].forEach(function (id) {
@@ -2048,6 +2173,12 @@ function init() {
   initTheme();
   initLang();
   $('verChip').textContent = APP_VER + ' · offline';
+  var uv = $('updVer'); if (uv) uv.textContent = APP_VER;
+  setUpdateState('idle');
+  /* after a hard update the URL carries ?v=<ts> — keep the address clean */
+  if (/[?&]v=\d+/.test(location.search)) {
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+  }
   $('sumMonth').value = todayISO().slice(0, 7);
   fillCatSelect();
   fillWorkerDatalist();
@@ -2059,6 +2190,7 @@ function init() {
     new MutationObserver(queueTranslate).observe(document.body, { childList: true, subtree: true, characterData: true });
   }
   go('today');
+  initSw();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
 else init();
