@@ -9,21 +9,31 @@ mosque crest brand, day/night theme.
 ## Files
 - `index.html` — 5 views (today/register/report/summary/settings) + entry modal
 - `app.js` — all logic, vanilla JS, no deps. Globals exposed for tests:
-  `rowsToCSV`, `applyBackup`, `filteredEntries`, `durOf`, `go`
+  `rowsToCSV`, `applyBackup`, `filteredEntries`, `durOf`, `go`, photo layer
+  (`phOpen/phPut/phGet/phDel/phAll/phClear`, `compressPhoto`, `openViewer`)
 - `styles.css` — design tokens + `@media print` (only `#printDoc` prints)
-- `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v4)
+- `sw.js` — network-first SW. **Bump `CACHE` (`mmr-vN`) on every change** (now mmr-v7)
 - `vendor/jspdf.umd.min.js` + `vendor/jspdf.plugin.autotable.min.js` +
   `vendor/html2canvas.min.js` (1.4.1) — self-hosted PDF libs, in sw SHELL
 - `fonts/jameel-noori-nastaleeq.woff2` (5.5MB) — Urdu report font, lazy
   (downloaded when an Urdu report is first shown; runtime-cached by sw)
 - `manifest.webmanifest`, `icons/` (mkicon.py = pure-stdlib generator)
-- `tests/smoke.js` — jsdom smoke, run `npm test` (145 asserts, must stay green)
+- `tests/smoke.js` — jsdom smoke, run `npm test` (183 asserts, must stay green)
 
 ## Conventions
 - Form inputs have NO name attributes — read via `$('id')`, never
   `form.elements` (jsdom gotcha).
 - User data stored: `mmr_entries`, `mmr_workers`, `mmr_settings`, `mmr_theme`,
-  `mmr_lang` ('en'/'ur'), `mmr_autofix` (1/0).
+  `mmr_lang` ('en'/'ur'), `mmr_autofix` (1/0). `mmr_me` = profile.
+- **v1.6 photos:** IndexedDB `mmr_photos` (db) / `photos` (store), key
+  `<entryId>_before|<entryId>_after`, value = dataURL JPEG (canvas compress
+  1280px q0.7). Entries carry only `hasBefore`/`hasAfter` booleans.
+  `PH_MEM`/`PH_CACHE` make reads sync-ish; `photosReady()`/`preloadPhotos()`
+  gate the report render so `phPhotoHtml()` can inline images. jsdom has no
+  IndexedDB → layer silently falls back to memory (tests stub it).
+  Report order: header → prepared-by → title → meta → 1 Summary → 2 Detailed
+  register → 3 Photo record (`#repPhotos` toggle, default OFF) → follow-ups
+  → signatures. Backup JSON `v:2` includes `photos`; v1 restore still works.
 - v1.1 i18n: `I18N_UR` dict keyed by EXACT English strings; `translateTree()`
   (TreeWalker + WeakMap originals) + MutationObserver; `#repPreview`/`#printDoc`
   NEVER translate (report stays English); interpolated toasts use `tStr()`.

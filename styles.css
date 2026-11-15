@@ -418,7 +418,7 @@ html[data-theme="night"] .toast{background:#e9eef6;color:#0c1420}
 }
 .langsel:hover{border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}
 .top-actions .langsel{min-height:42px}
-.checkrow{flex-direction:row;align-items:center;gap:10px;font-size:13px;font-weight:600;
+.checkrow{display:flex;flex-direction:row;align-items:center;gap:10px;font-size:13px;font-weight:600;
   text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer;margin-bottom:10px}
 .checkrow input{width:18px;height:18px;accent-color:var(--acc);cursor:pointer;flex:none}
 
@@ -434,4 +434,50 @@ html[dir="rtl"] input[type="number"],html[dir="rtl"] input[type="search"]{direct
 @media(max-width:980px){
   html[dir="rtl"] .side{transform:translateX(103%)}
   html[dir="rtl"] .side.open{transform:none}
+}
+
+/* ---------- work photos (v1.6) ---------- */
+.photorow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:4px 0 8px}
+.pslot{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:8px}
+.pslot-lab{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.pthumb{position:relative;aspect-ratio:4/3;border-radius:10px;border:1.5px dashed var(--line);background:var(--surf2);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
+.pthumb img{display:none;width:100%;height:100%;object-fit:cover}
+.pthumb.has{border-style:solid}
+.pthumb.has img{display:block}
+.pthumb .phe svg{width:26px;height:26px;color:var(--mut)}
+.pthumb.has .phe{display:none}
+.pbtns{display:flex;gap:6px;flex-wrap:wrap}
+.pbtns .ghostbtn{min-height:36px;padding:5px 10px;font-size:12px;flex:1}
+
+.ephotos{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.ethumb{margin:0;width:84px;cursor:pointer;border-radius:9px;overflow:hidden;border:1px solid var(--line);background:var(--surf2)}
+.ethumb img{display:block;width:100%;height:60px;object-fit:cover;background:var(--surf2)}
+.ethumb figcaption{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);text-align:center;padding:3px 0;background:var(--surf)}
+.mini-photos{display:flex;gap:4px}
+.mini-photos img{width:38px;height:38px;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:pointer;background:var(--surf2)}
+
+/* photo record inside the report document */
+.rdoc .pphotos{display:flex;flex-direction:column;gap:10px}
+.rdoc .pphoto{border:1px solid #c4cdd8;border-radius:6px;padding:8px 10px;page-break-inside:avoid;break-inside:avoid}
+.rdoc .pph-top{font-size:11.5px;color:#14202e;margin-bottom:6px}
+.rdoc .pph-top b{margin-right:8px}
+.rdoc .pph-top span{color:#3c4a5a}
+.rdoc .pph-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rdoc .pph{margin:0}
+.rdoc .pph-im{height:150px;border:1px solid #c4cdd8;border-radius:4px;overflow:hidden;background:#f6f8fb}
+.rdoc .pph-im img{width:100%;height:100%;object-fit:cover;display:block}
+.rdoc .pph figcaption{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#5b6b7d;text-align:center;padding-top:3px}
+
+/* fullscreen photo viewer */
+.photo-viewer{position:fixed;inset:0;z-index:150;display:flex;align-items:center;justify-content:center;padding:14px}
+.pv-scrim{position:absolute;inset:0;background:rgba(8,13,22,.82);backdrop-filter:blur(4px)}
+.pv-card{position:relative;z-index:1;width:min(520px,94vw);max-height:90vh;background:var(--bg);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--sh-lift)}
+.pv-head{display:flex;align-items:center;gap:10px}
+.pv-title{font-size:13px;font-weight:700;flex:1;min-width:0}
+.pv-card img{width:100%;max-height:62vh;object-fit:contain;border-radius:10px;background:#0c1420}
+.pv-bar{display:flex;align-items:center;gap:8px}
+.pv-bar #pvCap{flex:1;text-align:center;font-size:11.5px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.pv-bar .ghostbtn{min-height:38px;padding:5px 12px;font-size:12.5px}
+@media(max-width:420px){
+  .photorow{grid-template-columns:1fr}
 }

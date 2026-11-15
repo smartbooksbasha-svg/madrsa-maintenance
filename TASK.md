@@ -52,6 +52,24 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
       jsPDF Node test se embed verify (noise PNG 12KB → PDF me gaya)
 - [x] v1.5: tests 147/147, sw mmr-v6, commit 9efcb55
 
+- [x] v1.6: **work photos (Before/After)** — IndexedDB `mmr_photos`
+      (store `photos`, key `<entryId>_before|_after`), entries carry only
+      `hasBefore`/`hasAfter`; canvas compress max 1280px JPEG q0.7
+- [x] v1.6: entry form photo slots (file input `capture="environment"` →
+      preview + Remove; edit loads existing, After addable later),
+      before-photo nudge on save
+- [x] v1.6: Today card `.ephotos` strip + Register **Photos** column
+      (10 cols) thumbnails; tap → full-screen viewer (pending list,
+      Before/After cycle, swipe, Esc)
+- [x] v1.6: report **Include work photos** toggle (default OFF, shown only
+      when data has photos) → **3 · Photo record** section after detailed
+      table; vector PDF embeds JPEG/PNG with A4 page breaks; Urdu raster
+      path renders the same section
+- [x] v1.6: backup v2 includes photos base64 (restore repopulates IDB,
+      v1.5 backups still restore), clear-all wipes photos, Settings shows
+      photo count + size (`navigator.storage.estimate`)
+- [x] v1.6: sw mmr-v7, verChip v1.6, tests 183/183 green
+
 ## Decisions
 - PWA (not APK): PDF/print core feature — browser print is the proven path;
   installs on home screen like an app, works offline. APK wrapper possible later.
@@ -65,6 +83,18 @@ PLAN: see PROJECT_PLAN.md (mini-PRD + stages).
   in vendor/) + Web Share summary text. Urdu-script data → print fallback
   (jsPDF core fonts lack Arabic glyphs; print HTML renders Urdu fine).
 
-NOW: DONE — v1.5 live (commit 9efcb55): simplified report (entry/exit only)
-+ Urdu right-align + logo PNG fix. Awaiting Shan's next round.
+NOW: v1.6 complete in code (183 tests green) — committing + deploying.
+Report order now: header → prepared-by → title → meta → 1 Summary by category
+→ 2 Detailed register → 3 Photo record (optional) → follow-ups → signatures.
+Next round: Shan's feedback on photos (e.g. per-photo caption, WhatsApp share
+of images, or APK wrapper).
+
+## Delivery (2026-11-15)
+- [x] Shan: "app ka rdp do pdf mein" → Download folder me:
+      `MADRSA-APP-DOC.pdf` (13 pages doc) + `.md`/`.tex` source +
+      `madrsa-maintenance-repo-2026-11-15.zip` (5.6MB, 30 files, no
+      .git/node_modules, unzip -t clean) + live/repo/ZIP links diye
+- Note: doc = user-facing documentation (screens, report spec, PDF system,
+  data keys, deploy, versions, limits) — future rounds me yehi file update
+  karo, naya doc na banao.
 Backup zip v1.0: $ZYVO_SESSION_DIR/madrsa-maintenance-v1.0.zip.

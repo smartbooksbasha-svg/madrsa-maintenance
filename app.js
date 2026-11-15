@@ -3,7 +3,7 @@
    report (print→PDF), monthly summary, backup. No dependencies. */
 'use strict';
 
-var APP_VER = 'v1.5';
+var APP_VER = 'v1.6';
 var LS = { E: 'mmr_entries', W: 'mmr_workers', S: 'mmr_settings', T: 'mmr_theme', L: 'mmr_lang', F: 'mmr_autofix', ME: 'mmr_me' };
 
 var CATS = [
@@ -154,6 +154,195 @@ function applyPhotoPrev() {
   }
 }
 
+/* ---------- work photos — Before/After, stored in IndexedDB ----------
+   localStorage is far too small for JPEGs; only the flags hasBefore /
+   hasAfter live on the entry. Keys: <entryId>_before and <entryId>_after.
+   A memory fallback keeps the same API working when IndexedDB is missing. */
+var PH_DB = 'mmr_photos', PH_ST = 'photos';
+var PH_MEM = {};      /* fallback store (no IndexedDB) */
+var PH_CACHE = {};    /* dataURL cache — lets preview/PDF render synchronously */
+var PH_DB_P = null;
+
+function phOpen() {
+  if (PH_DB_P) return PH_DB_P;
+  PH_DB_P = new Promise(function (resolve) {
+    if (!window.indexedDB) { resolve(null); return; }
+    var req;
+    try { req = window.indexedDB.open(PH_DB, 1); } catch (e) { resolve(null); return; }
+    req.onupgradeneeded = function () {
+      var db = req.result;
+      if (!db.objectStoreNames.contains(PH_ST)) db.createObjectStore(PH_ST);
+    };
+    req.onsuccess = function () { resolve(req.result); };
+    req.onerror = function () { resolve(null); };
+    req.onblocked = function () { resolve(null); };
+  });
+  return PH_DB_P;
+}
+function phPut(key, data) {
+  PH_CACHE[key] = data; PH_MEM[key] = data;
+  return phOpen().then(function (db) {
+    if (!db) return true;
+    return new Promise(function (res) {
+      try {
+        var tx = db.transaction(PH_ST, 'readwrite');
+        tx.objectStore(PH_ST).put(data, key);
+        tx.oncomplete = function () { res(true); };
+        tx.onerror = function () { res(false); };
+        tx.onabort = function () { res(false); };
+      } catch (e) { res(false); }
+    });
+  });
+}
+function phGet(key) {
+  if (PH_CACHE[key]) return Promise.resolve(PH_CACHE[key]);
+  if (PH_MEM[key]) return Promise.resolve(PH_MEM[key]);
+  return phOpen().then(function (db) {
+    if (!db) return null;
+    return new Promise(function (res) {
+      try {
+        var tx = db.transaction(PH_ST, 'readonly');
+        var rq = tx.objectStore(PH_ST).get(key);
+        rq.onsuccess = function () {
+          var v = rq.result || null;
+          if (v) PH_CACHE[key] = v;
+          res(v);
+        };
+        rq.onerror = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+  });
+}
+function phDel(key) {
+  delete PH_CACHE[key]; delete PH_MEM[key];
+  return phOpen().then(function (db) {
+    if (!db) return true;
+    return new Promise(function (res) {
+      try {
+        var tx = db.transaction(PH_ST, 'readwrite');
+        tx.objectStore(PH_ST).delete(key);
+        tx.oncomplete = function () { res(true); };
+        tx.onerror = function () { res(false); };
+      } catch (e) { res(false); }
+    });
+  });
+}
+function phAll() {
+  return phOpen().then(function (db) {
+    if (!db) return Object.assign({}, PH_MEM);
+    return new Promise(function (res) {
+      var out = {};
+      try {
+        var tx = db.transaction(PH_ST, 'readonly');
+        var rq = tx.objectStore(PH_ST).openCursor();
+        rq.onsuccess = function () {
+          var c = rq.result;
+          if (c) { out[c.key] = c.value; c.continue(); }
+        };
+        tx.oncomplete = function () { res(out); };
+        tx.onerror = function () { res(out); };
+      } catch (e) { res(Object.assign({}, PH_MEM)); }
+    });
+  });
+}
+function phClear() {
+  PH_CACHE = {}; PH_MEM = {};
+  return phOpen().then(function (db) {
+    if (!db) return true;
+    return new Promise(function (res) {
+      try {
+        var tx = db.transaction(PH_ST, 'readwrite');
+        tx.objectStore(PH_ST).clear();
+        tx.oncomplete = function () { res(true); };
+        tx.onerror = function () { res(false); };
+      } catch (e) { res(false); }
+    });
+  });
+}
+function phKeyOf(id, slot) { return id + '_' + slot; }
+function entryHasPhotos(e) { return !!(e && (e.hasBefore || e.hasAfter)); }
+function photoDelEntry(id) {
+  return Promise.all([phDel(phKeyOf(id, 'before')), phDel(phKeyOf(id, 'after'))]);
+}
+/* compress a camera/gallery image: longest side 1280 px, JPEG q=0.7 */
+function compressPhoto(file, cb) {
+  if (!file) return;
+  if (!/^image\//.test(file.type || '')) { toast('Could not read that image'); return; }
+  var fr = new FileReader();
+  fr.onload = function () {
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var mx = 1280, w = img.width || mx, h = img.height || mx;
+        var sc = Math.min(1, mx / Math.max(w, h));
+        var cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(w * sc));
+        cv.height = Math.max(1, Math.round(h * sc));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        cb(cv.toDataURL('image/jpeg', 0.7));
+      } catch (e) { cb(String(fr.result)); }
+    };
+    img.onerror = function () { toast('Could not read that image'); };
+    img.src = String(fr.result);
+  };
+  fr.onerror = function () { toast('Could not read that image'); };
+  fr.readAsDataURL(file);
+}
+/* attach or remove a photo directly on an entry (also used by restore) */
+function attachPhoto(id, slot, dataUrl) {
+  var e = entries.find(function (x) { return x.id === id; });
+  if (!e) return Promise.resolve(false);
+  var flag = slot === 'before' ? 'hasBefore' : 'hasAfter';
+  var key = phKeyOf(id, slot);
+  if (dataUrl) {
+    e[flag] = true;
+    return phPut(key, dataUrl).then(function () { saveEntries(entries); return true; });
+  }
+  delete e[flag];
+  saveEntries(entries);
+  return phDel(key).then(function () { return true; });
+}
+/* fill every <img data-ph="key"> under root from the photo store */
+function hydrateThumbs(root) {
+  qsa('img[data-ph]', root || document).forEach(function (img) {
+    if (img.getAttribute('data-phdone')) return;
+    img.setAttribute('data-phdone', '1');
+    phGet(img.getAttribute('data-ph')).then(function (src) {
+      if (src) img.setAttribute('src', src);
+    });
+  });
+}
+function preloadPhotos(rows) {
+  var jobs = [];
+  (rows || []).forEach(function (e) {
+    if (e.hasBefore) jobs.push(phGet(phKeyOf(e.id, 'before')));
+    if (e.hasAfter) jobs.push(phGet(phKeyOf(e.id, 'after')));
+  });
+  return Promise.all(jobs);
+}
+function photosReady(rows) {
+  return (rows || []).every(function (e) {
+    if (e.hasBefore && !PH_CACHE[phKeyOf(e.id, 'before')]) return false;
+    if (e.hasAfter && !PH_CACHE[phKeyOf(e.id, 'after')]) return false;
+    return true;
+  });
+}
+function phPhotoHtml(e, slot) {
+  var cap = slot === 'before' ? 'Before' : 'After';
+  var src = PH_CACHE[phKeyOf(e.id, slot)] || '';
+  if (!src) return ''; /* not loaded yet — the report redraws once it is */
+  return '<figure class="pph"><div class="pph-im"><img src="' + esc(src) + '" alt="' + cap + '"></div>'
+    + '<figcaption>' + cap + '</figcaption></figure>';
+}
+function fmtBytes(n) {
+  if (!n) return '0 KB';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return Math.round(n / 1024) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+/* rough decoded size of a data URL (base64 ≈ 3/4 of chars) */
+function dataUrlBytes(d) { return d ? Math.round(String(d).length * 0.75) : 0; }
+
 /* ---------- icons ---------- */
 function svgi(inner) {
   return '<svg viewBox="0 0 24 24" aria-hidden="true">' + inner + '</svg>';
@@ -257,8 +446,17 @@ var I18N_UR = {
   'No saved workers yet': 'ابھی کوئی کاریگر محفوظ نہیں',
   'Data': 'ڈیٹا', 'Backup (JSON file)': 'بیک اپ (JSON فائل)',
   'Restore from backup': 'بیک اپ بحال کریں', 'Clear all data': 'تمام ڈیٹا صاف کریں',
-  'All data stays on this device. Take a backup regularly — before clearing or changing phones.':
-    'تمام ڈیٹا اسی فون میں رہتا ہے۔ باقاعدگی سے بیک اپ لیں — صاف کرنے یا فون بدلنے سے پہلے۔',
+  'All data stays on this device. Take a backup regularly — before clearing or changing phones. Backups include work photos.':
+    'تمام ڈیٹا اسی فون میں رہتا ہے۔ باقاعدگی سے بیک اپ لیں — صاف کرنے یا فون بدلنے سے پہلے۔ بیک اپ میں کام کی تصاویر بھی شامل ہوتی ہیں۔',
+  /* work photos */
+  'Before photo': 'کام سے پہلے کی تصویر', 'After photo': 'کام کے بعد کی تصویر',
+  'Add before photo': 'پہلے کی تصویر شامل کریں', 'Add after photo': 'بعد کی تصویر شامل کریں',
+  'Remove': 'ہٹائیں', 'Include work photos': 'کام کی تصاویر شامل کریں',
+  'work photo': 'کام کی تصویر', 'work photos': 'کام کی تصاویر', 'device use': 'ڈیوائس استعمال',
+  'Photo added': 'تصویر شامل ہو گئی',
+  'Backup is large': 'بیک اپ بڑا ہے',
+  'Photos are compressed and stay on this phone only. Add the “after” photo when the work is finished.':
+    'تصاویر کمپریس ہو کر صرف اسی فون میں رہتی ہیں۔ کام مکمل ہونے پر “بعد” کی تصویر شامل کریں۔',
   'About': 'تعارف',
   'Madrsa Maintenance Register — works offline, installs like an app. Entries are stored on this device only.':
     'مدرسہ مینٹیننس رجسٹر — بغیر انٹرنیٹ چلتا ہے، ایپ کی طرح انسٹال ہوتا ہے۔ انٹریاں صرف اسی فون میں محفوظ ہوتی ہیں۔',
@@ -465,8 +663,10 @@ var settings = loadSettings();
 var me = loadMe();
 var editingId = null;
 var view = 'today';
-var repState = { preset: 'month', from: null, to: null };
+var repState = { preset: 'month', from: null, to: null, includePhotos: false };
 var sumState = { month: null };
+var phPending = null;  /* photos staged in the open entry form */
+var phDirty = null;    /* which slots the user actually changed */
 
 /* ---------- toast ---------- */
 var toastQ = null;
@@ -549,6 +749,18 @@ function renderToday() {
     return;
   }
   box.innerHTML = todays.map(entryCard).join('');
+  hydrateThumbs(box);
+}
+function ephotoStrip(e) {
+  if (!entryHasPhotos(e)) return '';
+  var h = '<div class="ephotos">';
+  ['before', 'after'].forEach(function (slot) {
+    if (!e[slot === 'before' ? 'hasBefore' : 'hasAfter']) return;
+    h += '<figure class="ethumb" data-viewer="' + esc(e.id) + '" data-slot="' + slot + '" title="View photo">'
+      + '<img data-ph="' + esc(phKeyOf(e.id, slot)) + '" alt="">'
+      + '<figcaption>' + (slot === 'before' ? 'Before' : 'After') + '</figcaption></figure>';
+  });
+  return h + '</div>';
 }
 function chip(big, small) {
   return '<div class="chip"><b>' + esc(big) + '</b><span>' + esc(small) + '</span></div>';
@@ -570,6 +782,7 @@ function entryCard(e) {
     + (e.materials ? '<div class="emeta">Materials: ' + esc(e.materials) + '</div>' : '')
     + (e.cost ? '<div class="emeta">Cost: ₹' + esc(e.cost) + '</div>' : '')
     + (phone ? '<div class="emeta">' + IC.phone + ' ' + esc(phone) + '</div>' : '')
+    + ephotoStrip(e)
     + '<div class="eacts">'
     + (st === 'working' ? '<button class="sbtn sbtn-acc" data-act="exit" data-id="' + esc(e.id) + '">' + IC.out + 'Mark exit</button>' : '')
     + '<button class="sbtn sbtn-mut" data-act="edit" data-id="' + esc(e.id) + '">' + IC.edit + 'Edit</button>'
@@ -630,7 +843,7 @@ function renderRegister() {
     + '<span><b>' + fmtDur(rows.length ? Math.round(totalMin / rows.length) : null) + '</b> average</span>';
   var body = $('regBody');
   if (!rows.length) {
-    body.innerHTML = '<tr><td colspan="9"><div class="empty">' + IC.empty
+    body.innerHTML = '<tr><td colspan="10"><div class="empty">' + IC.empty
       + '<b>No entries match</b>Change the filters, or add a new entry.</div></td></tr>';
     return;
   }
@@ -644,12 +857,19 @@ function renderRegister() {
       + '<td class="mono">' + esc(e.out || '…') + '</td>'
       + '<td class="mono">' + (st === 'working' ? '—' : fmtDur(d ? d.min : null)) + '</td>'
       + '<td class="wcell">' + esc(e.work || '') + (e.materials ? '<div class="emeta">' + esc(e.materials) + '</div>' : '') + (e.cost ? '<div class="emeta">₹' + esc(e.cost) + '</div>' : '') + '</td>'
+      + '<td class="phcell">' + (entryHasPhotos(e)
+        ? '<div class="mini-photos">'
+          + (e.hasBefore ? '<img data-ph="' + esc(phKeyOf(e.id, 'before')) + '" data-viewer="' + esc(e.id) + '" data-slot="before" alt="Before" title="Before photo">' : '')
+          + (e.hasAfter ? '<img data-ph="' + esc(phKeyOf(e.id, 'after')) + '" data-viewer="' + esc(e.id) + '" data-slot="after" alt="After" title="After photo">' : '')
+          + '</div>'
+        : '—') + '</td>'
       + '<td><span class="stpill st-' + st + '"><i></i>' + ST_LABEL[st] + '</span></td>'
       + '<td><div class="rowact">'
       + '<button data-act="edit" data-id="' + esc(e.id) + '" aria-label="Edit" title="Edit">' + IC.edit + '</button>'
       + '<button data-act="del" data-id="' + esc(e.id) + '" aria-label="Delete" title="Delete">' + IC.trash + '</button>'
       + '</div></td></tr>';
   }).join('');
+  hydrateThumbs(body);
 }
 
 /* =================== ENTRY MODAL =================== */
@@ -672,6 +892,8 @@ function openModal(id) {
   var f = $('entryForm');
   f.reset();
   $('eDate').value = todayISO();
+  phPending = { before: '', after: '' };
+  phDirty = { before: false, after: false };
   if (id) {
     var e = entries.find(function (x) { return x.id === id; });
     if (!e) return;
@@ -682,20 +904,41 @@ function openModal(id) {
     $('eWork').value = e.work || ''; $('eMaterials').value = e.materials || '';
     $('eCost').value = e.cost || ''; $('eStatus').value = e.status || 'auto';
     $('mDelete').classList.remove('hide');
+    ['before', 'after'].forEach(function (slot) {
+      if (!e[slot === 'before' ? 'hasBefore' : 'hasAfter']) return;
+      phGet(phKeyOf(e.id, slot)).then(function (src) {
+        if (src && phPending && editingId === id) { phPending[slot] = src; phRenderSlot(slot); }
+      });
+    });
   } else {
     $('mTitle').textContent = 'Add work entry';
     $('eStatus').value = 'auto';
     $('mDelete').classList.add('hide');
     $('eIn').value = nowHM();
   }
+  phRenderSlot('before'); phRenderSlot('after');
   $('entryModal').classList.remove('hide');
   $('entryModal').setAttribute('aria-hidden', 'false');
   setTimeout(function () { try { $('eWorker').focus(); } catch (err) {} }, 60);
+}
+function phCap(slot) { return slot === 'before' ? 'Before' : 'After'; }
+function phRenderSlot(slot) {
+  var cap = phCap(slot);
+  var box = $('ph' + cap);
+  if (!box) return;
+  var src = phPending ? phPending[slot] : '';
+  var img = box.querySelector('img');
+  box.classList.toggle('has', !!src);
+  if (src) img.setAttribute('src', src); else img.removeAttribute('src');
+  var add = $('ph' + cap + 'Btn'), del = $('ph' + cap + 'Del');
+  if (add) add.textContent = tStr(src ? 'Change photo' : (slot === 'before' ? 'Add before photo' : 'Add after photo'));
+  if (del) del.classList.toggle('hide', !src);
 }
 function closeModal() {
   $('entryModal').classList.add('hide');
   $('entryModal').setAttribute('aria-hidden', 'true');
   editingId = null;
+  phPending = null; phDirty = null;
 }
 function saveEntry(ev) {
   ev.preventDefault();
@@ -718,17 +961,34 @@ function saveEntry(ev) {
     fixedEn = w2 !== data.work || m2 !== data.materials || nw !== data.worker;
     data.work = w2; data.materials = m2; data.worker = nw;
   }
+  var savedId;
   if (editingId) {
     var i = entries.findIndex(function (x) { return x.id === editingId; });
     if (i > -1) {
       entries[i] = Object.assign({}, entries[i], data, { updatedAt: Date.now() });
     }
+    savedId = editingId;
     toast('Entry updated');
   } else {
-    entries.push(Object.assign({ id: uid(), createdAt: Date.now() }, data));
+    savedId = uid();
+    entries.push(Object.assign({ id: savedId, createdAt: Date.now() }, data));
     toast(fixedEn ? 'English auto-fixed — entry saved' : 'Entry saved');
   }
+  /* photos: only touch the slots the user changed */
+  var pend = phPending ? { before: phPending.before, after: phPending.after } : { before: '', after: '' };
+  var dirty = phDirty || { before: false, after: false };
+  var ent = entries.find(function (x) { return x.id === savedId; });
+  ['before', 'after'].forEach(function (slot) {
+    if (!dirty[slot] || !ent) return;
+    var flag = slot === 'before' ? 'hasBefore' : 'hasAfter';
+    if (pend[slot]) ent[flag] = true; else delete ent[flag];
+  });
   saveEntries(entries);
+  ['before', 'after'].forEach(function (slot) {
+    if (!dirty[slot]) return;
+    if (pend[slot]) phPut(phKeyOf(savedId, slot), pend[slot]);
+    else phDel(phKeyOf(savedId, slot));
+  });
   closeModal();
   refreshView();
 }
@@ -749,6 +1009,7 @@ function deleteEntry(id) {
   if (typeof confirm === 'function' && !confirm('Delete this entry?\n' + e.worker + ' — ' + fmtDate(e.date))) return;
   entries = entries.filter(function (x) { return x.id !== id; });
   saveEntries(entries);
+  photoDelEntry(id);
   toast('Entry deleted');
   closeModal();
   refreshView();
@@ -821,12 +1082,20 @@ function reportRows() {
 }
 function renderReportOutput() {
   var rows = reportRows();
+  drawReport(rows);
+  if (!photosReady(rows)) preloadPhotos(rows).then(function () { drawReport(reportRows()); });
+}
+function drawReport(rows) {
   var html = reportDocHtml(rows);
   $('repPreview').className = sheetClass(rows);
   $('repPreview').innerHTML = html;
   $('printDoc').innerHTML = '<div class="' + sheetClass(rows) + '">' + html + '</div>';
   $('sheetWrap').classList.remove('hide');
   $('repActions').classList.remove('hide');
+  var row = $('repPhotoRow');
+  if (row) row.classList.toggle('hide', !rows.some(entryHasPhotos));
+  var cb = $('repPhotos');
+  if (cb) { cb.checked = !!repState.includePhotos; }
   repState.lastRows = rows;
 }
 function reportDocHtml(rows) {
@@ -883,6 +1152,23 @@ function reportDocHtml(rows) {
     });
     h += '<tr class="ttot"><td colspan="8">Total</td><td>' + rows.length + ' works</td></tr></tbody></table>';
 
+    /* 3 — photo record (only when the toggle is on and photos exist) */
+    if (repState.includePhotos) {
+      var phRows = rows.filter(entryHasPhotos);
+      if (phRows.length) {
+        h += '<h3>3 · Photo record</h3><div class="pphotos">';
+        phRows.forEach(function (e, i) {
+          h += '<div class="pphoto"><div class="pph-top"><b>' + (i + 1) + ' · ' + esc(fmtDate(e.date)) + '</b>'
+            + '<span>' + esc(catById(e.cat).label) + ' — ' + esc(e.work || '') + '</span></div>'
+            + '<div class="pph-grid">'
+            + (e.hasBefore ? phPhotoHtml(e, 'before') : '')
+            + (e.hasAfter ? phPhotoHtml(e, 'after') : '')
+            + '</div></div>';
+        });
+        h += '</div>';
+      }
+    }
+
     /* follow-ups */
     var fl = rows.filter(function (e) { return statusOf(e) === 'follow'; });
     if (fl.length) {
@@ -902,6 +1188,13 @@ function reportDocHtml(rows) {
 }
 function printReport() {
   var rows = repState.lastRows || reportRows();
+  if (!photosReady(rows)) {
+    preloadPhotos(rows).then(function () { doPrintReport(rows); });
+    return;
+  }
+  doPrintReport(rows);
+}
+function doPrintReport(rows) {
   $('printDoc').innerHTML = '<div class="' + sheetClass(rows) + '">' + reportDocHtml(rows) + '</div>';
   setTimeout(function () {
     try { window.print(); }
@@ -926,6 +1219,13 @@ function buildPdf() {
   var rows = repState.lastRows || reportRows();
   if (!rows.length) { toast('No entries in this period'); return; }
   if (!window.jspdf || !window.jspdf.jsPDF) { printReport(); toast('PDF engine unavailable — opening print'); return; }
+  if (!photosReady(rows)) {
+    preloadPhotos(rows).then(function () { buildPdfRows(rows); });
+    return;
+  }
+  buildPdfRows(rows);
+}
+function buildPdfRows(rows) {
   if (pdfHasUrdu(rows)) { urduPdf(rows); return; }
   var s = settings, W = 210, M = 13, CW = W - 2 * M;
   var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
@@ -1014,6 +1314,38 @@ function buildPdf() {
     margin: { left: M, right: M }, tableWidth: CW
   });
   var y4 = doc.lastAutoTable.finalY + 8;
+
+  /* photo record — before/after per entry, page-break aware */
+  if (repState.includePhotos) {
+    var phRows = rows.filter(entryHasPhotos);
+    if (phRows.length) {
+      if (y4 > 200) { doc.addPage(); y4 = 24; }
+      pdfSectionTitle(doc, 'Photo record', y4);
+      y4 += 4;
+      var pw = (CW - 8) / 2, phh = pw * 0.72;
+      phRows.forEach(function (e, i) {
+        var imgs = [];
+        if (e.hasBefore) imgs.push({ cap: 'Before', src: PH_CACHE[phKeyOf(e.id, 'before')] || '' });
+        if (e.hasAfter) imgs.push({ cap: 'After', src: PH_CACHE[phKeyOf(e.id, 'after')] || '' });
+        imgs = imgs.filter(function (im) { return !!im.src; });
+        var blockH = imgs.length ? phh + 18 : 10;
+        if (y4 + blockH > 272) { doc.addPage(); y4 = 20; }
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(20, 32, 46);
+        var label = (i + 1) + ' · ' + fmtDate(e.date) + ' — ' + catById(e.cat).label + ': ' + (e.work || '');
+        var lines = doc.splitTextToSize ? doc.splitTextToSize(label, CW) : [label];
+        doc.text(lines[0] || label, M, y4 + 4);
+        var iy = y4 + 7;
+        imgs.forEach(function (im, k) {
+          var ix = M + k * (pw + 8);
+          try { doc.addImage(im.src, /^data:image\/png/i.test(im.src) ? 'PNG' : 'JPEG', ix, iy, pw, phh); } catch (er) {}
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(110, 122, 136);
+          doc.text(im.cap, ix, iy + phh + 3.4);
+        });
+        if (imgs.length) y4 = iy + phh + 9;
+      });
+      y4 += 2;
+    }
+  }
 
   /* follow-ups */
   var fl = rows.filter(function (e) { return statusOf(e) === 'follow'; });
@@ -1312,6 +1644,25 @@ function renderSettings() {
   $('meRole').value = me.role || '';
   applyPhotoPrev();
   renderWorkerList();
+  updateStoreInfo();
+}
+function updateStoreInfo() {
+  var el = $('storeInfo');
+  if (!el) return;
+  phAll().then(function (photos) {
+    var keys = Object.keys(photos || {});
+    var bytes = 0;
+    keys.forEach(function (k) { bytes += dataUrlBytes(photos[k]); });
+    var txt = keys.length + ' ' + tStr(keys.length === 1 ? 'work photo' : 'work photos')
+      + (bytes ? ' · ' + fmtBytes(bytes) : '');
+    var est = window.navigator && navigator.storage && navigator.storage.estimate;
+    if (est) {
+      navigator.storage.estimate().then(function (v) {
+        if (v && v.usage) txt += ' · ' + tStr('device use') + ' ' + fmtBytes(v.usage);
+        el.textContent = txt;
+      }).catch(function () { el.textContent = txt; });
+    } else el.textContent = txt;
+  });
 }
 function renderWorkerList() {
   var ul = $('wList');
@@ -1326,14 +1677,29 @@ function renderWorkerList() {
 }
 
 /* ---------- backup / restore ---------- */
+function backupPayload() {
+  return phAll().then(function (photos) {
+    return {
+      app: 'madrsa-maintenance', v: 2, date: new Date().toISOString(),
+      entries: entries, workers: workers, settings: settings, me: me, photos: photos || {}
+    };
+  });
+}
 function backupData() {
-  var payload = {
-    app: 'madrsa-maintenance', v: 1, date: new Date().toISOString(),
-    entries: entries, workers: workers, settings: settings, me: me
+  var emit = function (photos) {
+    var payload = {
+      app: 'madrsa-maintenance', v: 2, date: new Date().toISOString(),
+      entries: entries, workers: workers, settings: settings, me: me, photos: photos
+    };
+    var sz = 0;
+    try { sz = new Blob([JSON.stringify(payload)]).size; } catch (e) {}
+    if (sz > 5 * 1024 * 1024) toast('Large backup (' + fmtBytes(sz) + ') — photos included');
+    if (download('madrsa-maintenance-backup-' + fileStamp() + '.json', JSON.stringify(payload, null, 2), 'application/json')) {
+      toast('Backup file downloaded');
+    }
   };
-  if (download('madrsa-maintenance-backup-' + fileStamp() + '.json', JSON.stringify(payload, null, 2), 'application/json')) {
-    toast('Backup file downloaded');
-  }
+  if (!entries.some(entryHasPhotos)) { emit({}); return; }
+  phAll().then(emit);
 }
 function applyBackup(obj) {
   if (!obj || typeof obj !== 'object' || !Array.isArray(obj.entries)) {
@@ -1341,15 +1707,29 @@ function applyBackup(obj) {
     return false;
   }
   var nE = obj.entries.length, nW = (obj.workers || []).length;
+  var photos = (obj.photos && typeof obj.photos === 'object') ? obj.photos : {};
+  var nP = Object.keys(photos).length;
   var msg = 'Restore backup from ' + (obj.date ? fmtDate(obj.date.slice(0, 10)) : 'unknown date') + '?\n'
-    + nE + ' entries, ' + nW + ' workers will replace the current data.';
+    + nE + ' entries, ' + nW + ' workers' + (nP ? ', ' + nP + ' photos' : '') + ' will replace the current data.';
   if (typeof confirm === 'function' && !confirm(msg)) return false;
   entries = obj.entries.slice();
   workers = (obj.workers || []).slice();
+  /* photo flags survive even when the backup predates them */
+  entries.forEach(function (e) {
+    if (photos[e.id + '_before']) e.hasBefore = true;
+    if (photos[e.id + '_after']) e.hasAfter = true;
+  });
   if (obj.settings) settings = Object.assign({}, DEF_SET, obj.settings);
   if (obj.me) saveMe(Object.assign({}, DEF_ME, obj.me));
   else saveMe(me);
   saveEntries(entries); saveWorkers(workers); saveSettings(settings);
+  if (nP || entries.some(entryHasPhotos)) {
+    phClear().then(function () {
+      var jobs = [];
+      Object.keys(photos).forEach(function (k) { jobs.push(phPut(k, photos[k])); });
+      return Promise.all(jobs);
+    }).then(function () { if (view === 'report') renderReportOutput(); });
+  }
   toast(tStr('Backup restored') + ' — ' + nE + ' entries');
   fillWorkerFilter();
   applyBrand();
@@ -1370,13 +1750,53 @@ function restoreFromFile(file) {
 function clearAll() {
   if (!entries.length && !workers.length) { toast('Nothing to clear'); return; }
   if (typeof confirm === 'function' &&
-    !confirm('Delete ALL entries and workers from this device?\nThis cannot be undone — take a backup first!')) return;
+    !confirm('Delete ALL entries, workers and work photos from this device?\nThis cannot be undone — take a backup first!')) return;
   entries = []; workers = [];
   saveEntries(entries); saveWorkers(workers);
+  phClear();
   fillWorkerFilter();
   refreshView();
   if (view === 'settings') renderSettings();
   toast('All data cleared');
+}
+
+/* ---------- fullscreen photo viewer ---------- */
+var pvState = { id: null, slots: [], idx: 0 };
+function openViewer(id, slot) {
+  var e = entries.find(function (x) { return x.id === id; });
+  if (!e) return;
+  var slots = [];
+  if (e.hasBefore) slots.push('before');
+  if (e.hasAfter) slots.push('after');
+  if (!slots.length) return;
+  var i = slots.indexOf(slot);
+  pvState = { id: id, slots: slots, idx: i < 0 ? 0 : i };
+  $('photoViewer').classList.remove('hide');
+  $('photoViewer').setAttribute('aria-hidden', 'false');
+  phViewerShow();
+}
+function phViewerShow() {
+  var e = entries.find(function (x) { return x.id === pvState.id; });
+  if (!e) { closeViewer(); return; }
+  var slot = pvState.slots[pvState.idx] || 'before';
+  $('pvTitle').textContent = (e.worker ? e.worker + ' · ' : '') + fmtDate(e.date) + ' — ' + catById(e.cat).label;
+  $('pvCap').textContent = (slot === 'before' ? 'Before' : 'After') + ' photo';
+  var img = $('pvImg');
+  img.removeAttribute('src');
+  phGet(phKeyOf(e.id, slot)).then(function (src) { if (src) img.setAttribute('src', src); });
+  var multi = pvState.slots.length > 1;
+  $('pvPrev').classList.toggle('hide', !multi);
+  $('pvNext').classList.toggle('hide', !multi);
+}
+function pvStep(d) {
+  if (pvState.slots.length < 2) return;
+  pvState.idx = (pvState.idx + d + pvState.slots.length) % pvState.slots.length;
+  phViewerShow();
+}
+function closeViewer() {
+  $('photoViewer').classList.add('hide');
+  $('photoViewer').setAttribute('aria-hidden', 'true');
+  pvState = { id: null, slots: [], idx: 0 };
 }
 
 /* =================== events =================== */
@@ -1427,15 +1847,65 @@ function bind() {
   qs('#entryModal .mscrim').addEventListener('click', closeModal);
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Escape') {
-      if (!$('entryModal').classList.contains('hide')) closeModal();
+      if ($('photoViewer') && !$('photoViewer').classList.contains('hide')) closeViewer();
+      else if (!$('entryModal').classList.contains('hide')) closeModal();
       else closeDrawer();
     }
   });
   $('inNow').addEventListener('click', function () { $('eIn').value = nowHM(); });
   $('outNow').addEventListener('click', function () { $('eOut').value = nowHM(); });
 
-  /* delegated entry actions (cards + table rows) */
+  /* work photos in the entry form */
+  ['before', 'after'].forEach(function (slot) {
+    var cap = slot === 'before' ? 'Before' : 'After';
+    var btn = $('ph' + cap + 'Btn'), inp = $('ph' + cap + 'File'), del = $('ph' + cap + 'Del'), box = $('ph' + cap);
+    if (!btn || !inp) return;
+    var pick = function () { inp.click(); };
+    btn.addEventListener('click', pick);
+    if (box) box.addEventListener('click', pick);
+    inp.addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      this.value = '';
+      if (!f) return;
+      compressPhoto(f, function (d) {
+        if (!phPending) return;
+        phPending[slot] = d; phDirty[slot] = true; phRenderSlot(slot);
+        toast(tStr('Photo added'));
+      });
+    });
+    if (del) del.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      if (!phPending) return;
+      phPending[slot] = ''; phDirty[slot] = true; phRenderSlot(slot);
+      toast(tStr('Photo removed'));
+    });
+  });
+
+  /* fullscreen viewer */
+  if ($('pvClose')) $('pvClose').addEventListener('click', closeViewer);
+  if ($('pvPrev')) $('pvPrev').addEventListener('click', function () { pvStep(-1); });
+  if ($('pvNext')) $('pvNext').addEventListener('click', function () { pvStep(1); });
+  qsa('[data-pvclose]').forEach(function (el) { el.addEventListener('click', closeViewer); });
+  var pvImg = $('pvImg'), pvX = null;
+  if (pvImg) {
+    pvImg.addEventListener('touchstart', function (ev) { pvX = ev.touches[0].clientX; }, { passive: true });
+    pvImg.addEventListener('touchend', function (ev) {
+      if (pvX == null) return;
+      var dx = ev.changedTouches[0].clientX - pvX;
+      pvX = null;
+      if (Math.abs(dx) > 40) pvStep(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
+  var repPh = $('repPhotos');
+  if (repPh) repPh.addEventListener('change', function () {
+    repState.includePhotos = !!this.checked;
+    renderReportOutput();
+  });
+
+  /* delegated entry actions (cards + table rows + photo thumbs) */
   document.addEventListener('click', function (ev) {
+    var pv = ev.target.closest ? ev.target.closest('[data-viewer]') : null;
+    if (pv) { openViewer(pv.getAttribute('data-viewer'), pv.getAttribute('data-slot')); return; }
     var t = ev.target.closest ? ev.target.closest('[data-act]') : null;
     if (t) {
       var act = t.getAttribute('data-act'), id = t.getAttribute('data-id');

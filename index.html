@@ -72,7 +72,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
         <span>Install app</span>
       </button>
-      <div class="ver" id="verChip">v1.5 · offline</div>
+      <div class="ver" id="verChip">v1.6 · offline</div>
     </div>
   </aside>
 
@@ -148,7 +148,7 @@
           <table class="tbl" id="regTable">
             <thead><tr>
               <th>Date</th><th>Worker</th><th>Category</th><th>In</th><th>Out</th>
-              <th>Time</th><th>Work done</th><th>Status</th><th class="thact"></th>
+              <th>Time</th><th>Work done</th><th>Photos</th><th>Status</th><th class="thact"></th>
             </tr></thead>
             <tbody id="regBody"></tbody>
           </table>
@@ -191,10 +191,13 @@
             <span>CSV</span>
           </button>
         </div>
+        <label class="checkrow hide" id="repPhotoRow">
+          <input type="checkbox" id="repPhotos">
+          <span>Include work photos</span>
+        </label>
         <div class="sheetwrap hide" id="sheetWrap">
           <div class="sheet" id="repPreview"></div>
-        </div>
-      </section>
+        </div>      </section>
 
       <!-- ============ SUMMARY ============ -->
       <section class="view hide" id="v-summary" aria-label="Summary">
@@ -313,7 +316,8 @@
               </button>
               <button class="dangerbtn" id="clearBtn">Clear all data</button>
             </div>
-            <p class="hint">All data stays on this device. Take a backup regularly — before clearing or changing phones.</p>
+            <p class="hint">All data stays on this device. Take a backup regularly — before clearing or changing phones. Backups include work photos.</p>
+            <p class="hint" id="storeInfo"></p>
           </div>
           <div class="card">
             <h3>About</h3>
@@ -369,6 +373,33 @@
           <option value="follow">Follow-up needed</option>
         </select></label>
       </div>
+      <div class="photorow">
+        <div class="pslot">
+          <span class="pslot-lab">Before photo</span>
+          <div class="pthumb" id="phBefore" title="Add the “before” photo">
+            <img alt="">
+            <span class="phe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1.5 1.5 0 0 1 1.5 1.5V19a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 19V9.5A1.5 1.5 0 0 1 4 8z"/><circle cx="12" cy="14" r="3.4"/></svg></span>
+          </div>
+          <div class="pbtns">
+            <button type="button" class="ghostbtn" id="phBeforeBtn">Add before photo</button>
+            <button type="button" class="ghostbtn hide" id="phBeforeDel">Remove</button>
+          </div>
+          <input type="file" id="phBeforeFile" accept="image/*" capture="environment" hidden>
+        </div>
+        <div class="pslot">
+          <span class="pslot-lab">After photo</span>
+          <div class="pthumb" id="phAfter" title="Add the “after” photo">
+            <img alt="">
+            <span class="phe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1.5 1.5 0 0 1 1.5 1.5V19a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 19V9.5A1.5 1.5 0 0 1 4 8z"/><circle cx="12" cy="14" r="3.4"/></svg></span>
+          </div>
+          <div class="pbtns">
+            <button type="button" class="ghostbtn" id="phAfterBtn">Add after photo</button>
+            <button type="button" class="ghostbtn hide" id="phAfterDel">Remove</button>
+          </div>
+          <input type="file" id="phAfterFile" accept="image/*" capture="environment" hidden>
+        </div>
+      </div>
+      <p class="hint">Photos are compressed and stay on this phone only. Add the “after” photo when the work is finished.</p>
       <div class="mfoot">
         <button type="button" class="dangerbtn hide" id="mDelete">Delete</button>
         <span class="spacer"></span>
@@ -380,6 +411,23 @@
 </div>
 
 <div id="printDoc"></div>
+<div class="photo-viewer hide" id="photoViewer" aria-hidden="true">
+  <div class="pv-scrim" data-pvclose="1"></div>
+  <div class="pv-card" role="dialog" aria-label="Work photo">
+    <div class="pv-head">
+      <div class="pv-title" id="pvTitle"></div>
+      <button class="iconbtn" id="pvClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <img id="pvImg" alt="">
+    <div class="pv-bar">
+      <button class="ghostbtn" id="pvPrev">‹ Before</button>
+      <span id="pvCap">Before photo</span>
+      <button class="ghostbtn" id="pvNext">After ›</button>
+    </div>
+  </div>
+</div>
 <div id="toasts" aria-live="polite"></div>
 <input type="file" id="restoreFile" accept="application/json,.json" hidden>
 

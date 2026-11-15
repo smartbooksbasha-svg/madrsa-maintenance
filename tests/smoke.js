@@ -18,6 +18,62 @@ function buildHtml() {
 
 const wait = ms => new Promise(r => setTimeout(r, ms || 150));
 
+
+/* minimal IndexedDB stand-in — lets the real photo layer run instead of the
+   memory fallback (jsdom ships no indexedDB) */
+function fakeIDB() {
+  const dbList = {};
+  return {
+    open(name) {
+      const store = dbList[name] || (dbList[name] = {});
+      let created = false;
+      const txRun = () => {
+        const ops = [];
+        const tx = {
+          objectStore: () => ({
+            put(v, k) { ops.push(() => { store[k] = v; }); },
+            get(k) { const rq = {}; ops.push(() => { rq.result = store[k]; if (rq.onsuccess) rq.onsuccess(); }); return rq; },
+            delete(k) { ops.push(() => { delete store[k]; }); },
+            clear() { ops.push(() => { Object.keys(store).forEach(k => delete store[k]); }); },
+            openCursor() {
+              const rq = {};
+              ops.push(() => {
+                const keys = Object.keys(store);
+                let i = 0;
+                const step = () => {
+                  if (i < keys.length) {
+                    const k = keys[i];
+                    rq.result = { key: k, value: store[k], continue: () => { i++; step(); } };
+                    if (rq.onsuccess) rq.onsuccess();
+                  } else {
+                    rq.result = null;
+                    if (rq.onsuccess) rq.onsuccess();
+                  }
+                };
+                step();
+              });
+              return rq;
+            }
+          })
+        };
+        setTimeout(() => { ops.forEach(f => { try { f(); } catch (e) {} }); if (tx.oncomplete) tx.oncomplete(); }, 0);
+        return tx;
+      };
+      const db = {
+        objectStoreNames: { contains: () => created },
+        createObjectStore: () => { created = true; },
+        transaction: txRun
+      };
+      const req = { result: db };
+      setTimeout(() => {
+        if (!created && req.onupgradeneeded) req.onupgradeneeded();
+        if (req.onsuccess) req.onsuccess();
+      }, 0);
+      return req;
+    }
+  };
+}
+
 async function boot(pre) {
   const st = pre || {};
   let printed = 0, blobUrl = 0, shared = null;
@@ -38,6 +94,7 @@ async function boot(pre) {
       if (st.theme) w.localStorage.setItem('mmr_theme', JSON.stringify(st.theme));
       if (st.lang) w.localStorage.setItem('mmr_lang', JSON.stringify(st.lang));
       if (st.autofix !== undefined) w.localStorage.setItem('mmr_autofix', JSON.stringify(st.autofix));
+      if (st.idb) w.indexedDB = fakeIDB();
     }
   });
   await wait(350);
@@ -71,6 +128,16 @@ function addEntry(t, o) {
   if (d.status) setSel(t, 'eStatus', d.status);
   t.submit(t.$('entryForm'));
 }
+function openEntry(t, o) {
+  const d = o || {};
+  t.click(t.$('addTodayBtn'));
+  setVal(t, 'eDate', d.date || winToday());
+  setSel(t, 'eCat', d.cat || 'electrical');
+  setVal(t, 'eWorker', d.worker || 'Rafiq');
+  setVal(t, 'eIn', d.in || '09:00');
+  setVal(t, 'eOut', d.out === undefined ? '' : d.out);
+  setVal(t, 'eWork', d.work || 'Changed classroom tube light');
+}
 function winToday() {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
@@ -86,7 +153,7 @@ function winToday() {
   ok(t.qa('#todayList .empty').length === 1, 'empty state on boot');
   ok(t.$('pgTitle').textContent === 'Today', 'page title Today');
   ok(t.qa('.navbtn').length === 5, '5 nav buttons');
-  ok(t.$('verChip').textContent.indexOf('v1.5') === 0, 'version chip');
+  ok(t.$('verChip').textContent.indexOf('v1.6') === 0, 'version chip');
   ok(t.$('eCat').options.length === CATS_LEN(), 'category select filled');
 
   /* ---------- 2. add a completed entry ---------- */
@@ -417,6 +484,169 @@ function winToday() {
   t2.click(t2.$('pdfRep'));
   await wait(400);
   ok(t2.printed() === printed2 + 1, 'missing engine falls back to print');
+
+  /* ---------- 21. v1.6: work photos (IndexedDB layer + UI + report + PDF + backup) ---------- */
+  const FAKE = 'data:image/jpeg;base64,' + 'A'.repeat(400);
+  await t2.win.phPut('T_before', FAKE);
+  ok(await t2.win.phGet('T_before') === FAKE, 'photo store: put/get roundtrip');
+  ok((await t2.win.phAll()).T_before === FAKE, 'photo store: all() lists key');
+  await t2.win.phDel('T_before');
+  ok(await t2.win.phGet('T_before') === null, 'photo store: delete works');
+
+  /* add entry with a before photo — real form path, compression stubbed */
+  t2.win.go('today');
+  t2.win.compressPhoto = function (file, cb) { cb(FAKE); };
+  openEntry(t2, { worker: 'Photo Man', work: 'Replaced fan regulator', out: '15:00' });
+  let pin = t2.$('phBeforeFile');
+  Object.defineProperty(pin, 'files', { value: [{ type: 'image/jpeg', name: 'b.jpg' }], configurable: true });
+  pin.dispatchEvent(new t2.win.Event('change', { bubbles: true }));
+  await wait(40);
+  ok(t2.q('#phBefore').classList.contains('has'), 'before-photo preview shows in form');
+  t2.submit(t2.$('entryForm'));
+  await wait(60);
+  const pe = t2.ls('mmr_entries').find(x => x.worker === 'Photo Man');
+  ok(pe && pe.hasBefore === true, 'entry flag hasBefore saved');
+  ok(await t2.win.phGet(pe.id + '_before') === FAKE, 'photo persisted under entry key');
+  ok(t2.q('#todayList .ephotos .ethumb') !== null, 'before thumbnail on today card');
+
+  /* edit the same entry → attach the after photo */
+  t2.win.openModal(pe.id);
+  await wait(60);
+  ok(t2.q('#phBefore').classList.contains('has'), 'edit form loads existing photo');
+  let paf = t2.$('phAfterFile');
+  Object.defineProperty(paf, 'files', { value: [{ type: 'image/jpeg', name: 'a.jpg' }], configurable: true });
+  paf.dispatchEvent(new t2.win.Event('change', { bubbles: true }));
+  await wait(40);
+  t2.submit(t2.$('entryForm'));
+  await wait(60);
+  const pe2 = t2.ls('mmr_entries').find(x => x.worker === 'Photo Man');
+  ok(pe2.hasBefore === true && pe2.hasAfter === true, 'both photo flags saved on edit');
+  ok(await t2.win.phGet(pe2.id + '_after') === FAKE, 'after photo persisted');
+  ok(t2.qa('#todayList .ethumb').length >= 2, 'both thumbnails on card');
+
+  /* fullscreen viewer: open, switch, close */
+  t2.click(t2.q('#todayList [data-viewer]'));
+  await wait(60);
+  ok(!t2.$('photoViewer').classList.contains('hide'), 'viewer opens from thumbnail');
+  ok(t2.$('pvImg').getAttribute('src') === FAKE, 'viewer shows the photo');
+  t2.click(t2.$('pvNext'));
+  await wait(60);
+  ok(t2.$('pvCap').textContent.indexOf('After') > -1, 'viewer switches to after photo');
+  t2.click(t2.$('pvClose'));
+  ok(t2.$('photoViewer').classList.contains('hide'), 'viewer closes');
+
+  /* register table photos column */
+  t2.win.go('register');
+  await wait(40);
+  ok(t2.q('#regBody .mini-photos img') !== null, 'register row shows photo thumbnails');
+
+  /* report: toggle on → Photo record section with images */
+  t2.win.go('report');
+  t2.click(t2.q('.chipbtn[data-preset="month"]'));
+  ok(!t2.$('repPhotoRow').classList.contains('hide'), 'photo toggle visible when entries have photos');
+  ok(t2.$('repPreview').textContent.indexOf('Photo record') === -1, 'photos excluded by default');
+  t2.$('repPhotos').checked = true;
+  t2.$('repPhotos').dispatchEvent(new t2.win.Event('change', { bubbles: true }));
+  await wait(120);
+  ok(t2.$('repPreview').textContent.indexOf('Photo record') > -1, 'photo record section rendered');
+  ok(t2.q('#repPreview .pph-im img').getAttribute('src') === FAKE, 'photo embedded in preview');
+  ok(t2.q('#repPreview .pph figcaption').textContent === 'Before', 'before/after captions printed');
+  ok(t2.$('printDoc').innerHTML.indexOf('pphotos') > -1, 'print doc includes photos');
+
+  /* vector PDF embeds photo images */
+  let pdfImgs = [];
+  t2.win.jspdf = { jsPDF: function () {
+    return {
+      setFont: function () {}, setFontSize: function () {}, setTextColor: function () {},
+      setDrawColor: function () {}, setFillColor: function () {},
+      text: function () {}, line: function () {}, roundedRect: function () {},
+      addImage: function (src) { pdfImgs.push(src); },
+      splitTextToSize: function (s) { return [s]; },
+      setPage: function () {}, addPage: function () {},
+      getNumberOfPages: function () { return 1; },
+      getTextWidth: function () { return 22; },
+      autoTable: function () { this.lastAutoTable = { finalY: 80 }; },
+      save: function () {}
+    };
+  } };
+  t2.click(t2.$('pdfRep'));
+  await wait(60);
+  ok(pdfImgs.filter(x => String(x).indexOf('data:image/jpeg') === 0).length >= 2, 'vector PDF embeds before+after photos');
+
+  /* backup payload carries photos */
+  const pay = await t2.win.backupPayload();
+  ok(pay.photos && pay.photos[pe2.id + '_before'] === FAKE, 'backup payload includes photos');
+
+  /* restore v2 backup → photos back in the store */
+  const restored2 = t2.win.applyBackup({
+    app: 'madrsa-maintenance', v: 2, date: '2026-02-01T00:00:00Z',
+    entries: [{ id: 'PB1', date: winToday(), cat: 'electrical', worker: 'Restore Man', in: '09:00', out: '10:00', work: 'Restored work', materials: '', cost: 0, status: 'auto' }],
+    workers: [], photos: { 'PB1_before': FAKE }
+  });
+  await wait(80);
+  ok(restored2 === true, 'v2 backup restores');
+  ok(t2.ls('mmr_entries')[0].hasBefore === true, 'photo flag derived on restore');
+  ok(await t2.win.phGet('PB1_before') === FAKE, 'photo restored into the store');
+
+  /* old v1.5 backup (no photos key) still restores */
+  const oldOk = t2.win.applyBackup({ app: 'madrsa-maintenance', v: 1, date: '2026-01-01T00:00:00Z',
+    entries: [{ id: 'OLD1', date: winToday(), cat: 'other', worker: 'Old Guy', in: '09:00', out: '', work: 'Old work', materials: '', cost: 0, status: 'auto' }],
+    workers: [] });
+  ok(oldOk === true, 'v1.5 backup without photos restores');
+  ok(t2.ls('mmr_entries')[0].hasBefore === undefined, 'no photo flags invented on old backup');
+
+  /* settings shows photo storage info */
+  t2.win.go('settings');
+  await wait(80);
+  ok(t2.$('storeInfo').textContent.indexOf('work photo') > -1, 'settings shows photo storage info');
+
+  /* clear all wipes photos too */
+  t2.win.go('settings');
+  t2.click(t2.$('clearBtn'));
+  await wait(80);
+  ok(Object.keys(await t2.win.phAll()).length === 0, 'clear all wipes the photo store');
+  ok(t2.ls('mmr_entries').length === 0, 'clear all wipes entries');
+
+  /* ---------- 21b. v1.6: real IndexedDB path (not the memory fallback) ---------- */
+  const t5 = await boot({ idb: true });
+  ok(!!t5.win.indexedDB, 'idb: window has indexedDB');
+  ok(await t5.win.phPut('D1', FAKE) === true, 'idb: put writes through the transaction');
+  t5.win.PH_MEM = {}; t5.win.PH_CACHE = {};
+  ok(await t5.win.phGet('D1') === FAKE, 'idb: get reads back from the store');
+  t5.win.PH_MEM = {}; t5.win.PH_CACHE = {};
+  ok((await t5.win.phAll()).D1 === FAKE, 'idb: cursor lists records');
+  ok(await t5.win.phDel('D1') === true, 'idb: delete through the store');
+  ok(await t5.win.phGet('D1') === null, 'idb: deleted key is gone');
+
+  /* full save flow against the real DB path */
+  t5.win.compressPhoto = function (file, cb) { cb(FAKE); };
+  openEntry(t5, { worker: 'Idb Man', work: 'Serviced water pump' });
+  let iin = t5.$('phBeforeFile');
+  Object.defineProperty(iin, 'files', { value: [{ type: 'image/jpeg', name: 'b.jpg' }], configurable: true });
+  iin.dispatchEvent(new t5.win.Event('change', { bubbles: true }));
+  await wait(40);
+  t5.submit(t5.$('entryForm'));
+  await wait(100);
+  const ie = t5.ls('mmr_entries')[0];
+  ok(ie.hasBefore === true, 'idb: entry flag saved');
+  t5.win.PH_MEM = {}; t5.win.PH_CACHE = {};
+  ok(await t5.win.phGet(ie.id + '_before') === FAKE, 'idb: photo survives cache reset');
+  t5.win.go('today');
+  await wait(60);
+  ok(t5.q('#todayList .ethumb img').getAttribute('src') === FAKE, 'idb: thumbnail hydrates from DB');
+  t5.win.clearAll();
+  await wait(120);
+  ok(Object.keys(await t5.win.phAll()).length === 0, 'idb: clear all empties the store');
+
+  /* ---------- 22. v1.6: Urdu labels for the new photo UI ---------- */
+  const t4 = await boot({ lang: 'ur' });
+  t4.win.go('settings');
+  t4.win.openModal(null);
+  await wait(60);
+  ok(t4.$('phBeforeBtn').textContent.indexOf('تصویر') > -1, 'ur: before-photo button translated');
+  ok(t4.$('phAfterBtn').textContent.indexOf('تصویر') > -1, 'ur: after-photo button translated');
+  ok(t4.q('#entryModal .photorow') !== null, 'ur: photo row rendered');
+  ok(t4.win.I18N_UR['Include work photos'] !== undefined, 'ur: include-photos label translated');
 
   console.log('RESULT: ' + pass + ' passed, ' + fail + ' failed');
   process.exit(fail ? 1 : 0);
